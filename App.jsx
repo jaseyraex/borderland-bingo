@@ -6,6 +6,31 @@ const letters = ["B", "I", "N", "G", "O"];
 const speedChoices = [3, 5, 8, 10, 15, 20, 30];
 const ballLabel = (n) => n ? `${letters[Math.floor((n - 1) / 15)]}-${n}` : "—";
 
+
+function playBallDrawSound() {
+  try {
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContextClass) return;
+    const ctx = new AudioContextClass();
+    const now = ctx.currentTime;
+    // A quick lottery-ball style rising tone with a soft percussive click.
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = "triangle";
+    osc.frequency.setValueAtTime(420, now);
+    osc.frequency.exponentialRampToValueAtTime(760, now + 0.12);
+    osc.frequency.exponentialRampToValueAtTime(560, now + 0.24);
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.exponentialRampToValueAtTime(0.12, now + 0.015);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.28);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(now);
+    osc.stop(now + 0.29);
+    osc.onended = () => ctx.close();
+  } catch {}
+}
+
 export default function App() {
   const [page, setPage] = useState("home");
   const [name, setName] = useState("");
@@ -92,6 +117,7 @@ export default function App() {
     setPage("game");
   }
   function drawOne() {
+    if (soundOn) playBallDrawSound();
     setCalls((prev) => {
       const next = draw(prev);
       return next == null ? prev : [...prev, next];
@@ -125,13 +151,14 @@ export default function App() {
       if (countdown === 1) {
         setCountdown(0);
         // Release the first ball immediately when the countdown ends.
+        if (soundOn) playBallDrawSound();
         setCalls((prev) => { const next = draw(prev); return next == null ? prev : [...prev, next]; });
         setRunning(true);
       }
       else setCountdown((v) => v - 1);
     }, 1000);
     return () => clearTimeout(timer);
-  }, [page, countdown]);
+  }, [page, countdown, soundOn]);
 
   // Automatic calls. Changing the speed while running immediately updates the timer.
   useEffect(() => {
