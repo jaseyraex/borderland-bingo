@@ -24,16 +24,26 @@ function ballSfx(){ tone(660,.12,'sine',.07); tone(880,.18,'triangle',.045,.06);
 function bingoSfx(){ [523,659,784,1047].forEach((f,i)=>tone(f,.42,'triangle',.09,i*.08)); }
 function applauseSfx(){
   const ctx=getAudioContext(); if(!ctx)return;
-  for(let i=0;i<26;i++){ const start=ctx.currentTime+i*.075; const noise=ctx.createBufferSource(); const buffer=ctx.createBuffer(1,Math.floor(ctx.sampleRate*.08),ctx.sampleRate); const data=buffer.getChannelData(0); for(let j=0;j<data.length;j++)data[j]=(Math.random()*2-1)*Math.exp(-j/data.length*7); noise.buffer=buffer; const filter=ctx.createBiquadFilter(); filter.type='highpass';filter.frequency.value=900+Math.random()*1200; const gain=ctx.createGain();gain.gain.value=.045+Math.random()*.04; noise.connect(filter);filter.connect(gain);gain.connect(ctx.destination);noise.start(start);noise.stop(start+.08); }
+  // Short, bright broadband slap noises with varied timing and resonance to resemble hand claps.
+  const clapTimes=[0,.09,.18,.31,.43,.57,.7,.82,1.01,1.14,1.28,1.43,1.59,1.72,1.86,2.02,2.18,2.34,2.5];
+  clapTimes.forEach((offset)=>{
+    const start=ctx.currentTime+offset+(Math.random()*.025);
+    const length=Math.floor(ctx.sampleRate*.075);
+    const buffer=ctx.createBuffer(1,length,ctx.sampleRate);
+    const data=buffer.getChannelData(0);
+    for(let i=0;i<length;i++){
+      const t=i/length;
+      // Sharp attack, noisy body, fast decay with a little irregularity.
+      data[i]=(Math.random()*2-1)*(Math.exp(-t*20)*(1-t)*1.5);
+    }
+    const noise=ctx.createBufferSource(); noise.buffer=buffer;
+    const band=ctx.createBiquadFilter(); band.type='bandpass'; band.frequency.value=1500+Math.random()*1100; band.Q.value=.65+Math.random()*.45;
+    const low=ctx.createBiquadFilter(); low.type='lowpass'; low.frequency.value=3500;
+    const gain=ctx.createGain(); gain.gain.setValueAtTime(.0001,start); gain.gain.exponentialRampToValueAtTime(.16+Math.random()*.12,start+.003); gain.gain.exponentialRampToValueAtTime(.0001,start+.075);
+    noise.connect(band); band.connect(low); low.connect(gain); gain.connect(ctx.destination);
+    noise.start(start); noise.stop(start+.08);
+  });
 }
-function startMusic(){
-  const ctx=getAudioContext(); if(!ctx)return;
-  const notes=[196,246.94,293.66,246.94,220,261.63,329.63,261.63]; let index=0;
-  const play=()=>{ if(!ctx||ctx.state==='closed')return; const base=notes[index++%notes.length]; tone(base,.9,'sine',.018);tone(base*1.5,1.15,'triangle',.009,.05);tone(base*2,.75,'sine',.006,.1); };
-  play(); const id=setInterval(play,1450); return ()=>clearInterval(id);
-}
-
-
 export default function App() {
   const [page, setPage] = useState("home");
   const [name, setName] = useState("");
@@ -52,14 +62,11 @@ export default function App() {
   const [participants, setParticipants] = useState([]);
   const [roomCapacity, setRoomCapacity] = useState("");
   const [sharedLink, setSharedLink] = useState(false);
-  const [musicOn, setMusicOn] = useState(() => localStorage.getItem("bb-music") !== "off");
   const [sfxOn, setSfxOn] = useState(() => localStorage.getItem("bb-sfx") !== "off");
 
   const selectedWin = win(board, marks, patternsChosen, calls);
 
-  useEffect(() => { localStorage.setItem("bb-music", musicOn ? "on" : "off"); }, [musicOn]);
   useEffect(() => { localStorage.setItem("bb-sfx", sfxOn ? "on" : "off"); }, [sfxOn]);
-  useEffect(() => { if(!musicOn) return; return startMusic(); }, [musicOn]);
   const previousCallsRef = React.useRef(0);
   useEffect(() => {
     if(calls.length > previousCallsRef.current && sfxOn) ballSfx();
@@ -175,8 +182,7 @@ export default function App() {
       <div className="brand"><img src="/borderland-bingo-logo.png" alt="Borderland Bingo" /></div>
       <span>COMMUNITY GAME</span>
       <div className="header-controls">
-      <button className={`audio-toggle ${musicOn ? "on" : ""}`} title={musicOn ? "Turn background music off" : "Turn background music on"} onClick={() => { getAudioContext(); setMusicOn(v => !v); }}>♫ {musicOn ? "MUSIC ON" : "MUSIC OFF"}</button>
-      <button className={`audio-toggle ${sfxOn ? "on" : ""}`} title={sfxOn ? "Turn sound effects off" : "Turn sound effects on"} onClick={() => { getAudioContext(); setSfxOn(v => !v); }}>🔊 {sfxOn ? "SFX ON" : "SFX OFF"}</button>
+      <button className={`audio-toggle ${sfxOn ? "on" : ""}`} title={sfxOn ? "Turn sound off" : "Turn sound on"} onClick={() => { getAudioContext(); setSfxOn(v => !v); }}>🔊 {sfxOn ? "SOUND ON" : "SOUND OFF"}</button>
       <button className="theme-toggle" onClick={() => setDark((v) => !v)}>{dark ? "☀ LIGHT" : "☾ DARK"}</button>
     </div>
     </header>
