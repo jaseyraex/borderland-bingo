@@ -23,6 +23,7 @@ export default function App() {
   const [roomStarted, setRoomStarted] = useState(false);
   const [participants, setParticipants] = useState([]);
   const [roomCapacity, setRoomCapacity] = useState("");
+  const [sharedLink, setSharedLink] = useState(false);
 
   const selectedWin = win(board, marks, patternsChosen, calls);
 
@@ -32,6 +33,7 @@ export default function App() {
     const sharedRoom = params.get("room");
     if (sharedRoom) {
       setCode(sharedRoom.toUpperCase());
+      setSharedLink(true);
       setPage("join");
     }
   }, []);
@@ -134,15 +136,15 @@ export default function App() {
     </main>}
 
     {page === "join" && <main className="panel">
-      <button className="back" onClick={() => setPage("home")}>← BACK</button><small>PLAYER SETUP</small><h2>Join a game</h2><p className="hint">Joining as <b>{name}</b></p>
-      <label>ROOM CODE</label><input value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} placeholder="Enter room code" maxLength={5}/>
-      <button className="primary-wide" onClick={() => alert("This prototype is not connected to multiplayer yet. In the multiplayer version, rooms will be listed and started rooms will reject joins.")}>JOIN ROOM</button>
+      <button className="back" onClick={() => { setPage("home"); setSharedLink(false); }}>← BACK</button><small>PLAYER SETUP</small><h2>Join a game</h2>
+      {sharedLink ? <><p className="hint">You're joining room <b>{code}</b>. Enter your player name to continue.</p><label>PLAYER NAME</label><input value={name} onChange={(e) => setName(e.target.value)} placeholder="Enter your player name" maxLength={24}/></> : <><p className="hint">Joining as <b>{name}</b></p><label>ROOM CODE</label><input value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} placeholder="Enter room code" maxLength={5}/></>}
+      <button className="primary-wide" onClick={() => { if (!name.trim()) return alert("Please enter your player name."); if (!code.trim()) return alert("Please enter the room code."); alert("This prototype is not connected to multiplayer yet. In the multiplayer version, rooms will be listed and started rooms will reject joins."); }}>JOIN ROOM</button>
       <p className="hint">Players can join only while the host is in the lobby. Once the game starts, joining is closed.</p>
     </main>}
 
     {page === "lobby" && <main className="panel lobby">
       <button className="back" onClick={() => setPage("home")}>← HOME</button><small>WAITING ROOM</small><h2>{roomName}</h2>
-      <p className="room-label">ROOM CODE</p><div className="code">{code}<button className="copy" onClick={() => navigator.clipboard?.writeText(code)}>COPY CODE</button><button className="copy link-copy" title="Copy shareable joining link" aria-label="Copy shareable joining link" onClick={copyRoomLink}>⛓</button></div>
+      <p className="room-label">ROOM CODE</p><div className="code">{code}<button className="copy" onClick={() => navigator.clipboard?.writeText(code)}>COPY CODE</button><button className="copy link-copy" title="Copy shareable joining link" aria-label="Copy shareable joining link" onClick={copyRoomLink}><svg viewBox="0 0 24 24" aria-hidden="true" className="link-icon"><path d="M10 13a5 5 0 0 0 7.07 0l3-3A5 5 0 0 0 13 8.93"/><path d="M14 11a5 5 0 0 0-7.07 0l-3 3A5 5 0 0 0 11 16.07"/></svg></button></div>
       <h3>WINNING PATTERNS</h3><div className="patterns">{patterns.map((p) => <button key={p} className={patternsChosen.includes(p) ? "chosen" : ""} onClick={() => setPatternsChosen((old) => old.includes(p) ? old.filter((x) => x !== p) : [...old, p])}>{p}</button>)}</div>
       <label>CALL INTERVAL</label>{speedSelect}<div className="participant-summary"><strong>PARTICIPANTS: {participants.length}/{roomCapacity}</strong><span>Joining closes when the game starts.</span></div><div className="waiting-grid"><div className="participant-list"><h3>IN THE ROOM</h3>{participants.map((p,i)=><div className="participant" key={i}>♟ {p.name}<small>{p.role}</small></div>)}</div></div><button className="primary-wide" onClick={startGame}>START GAME</button><p className="hint">3-second countdown before the first ball. New players cannot join after the game starts.</p>
     </main>}
