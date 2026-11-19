@@ -58,10 +58,22 @@ export default function App() {
     setPage("lobby");
   }
   function startGame() {
-    setRoomStarted(true);
-    setPage("game");
+    // Starting/restarting from the lobby always begins a fresh round for everyone.
+    // In this frontend prototype, the host's local card is regenerated here.
+    let freshBoard = card();
+    let attempts = 0;
+    while (JSON.stringify(freshBoard) === JSON.stringify(board) && attempts < 10) {
+      freshBoard = card();
+      attempts += 1;
+    }
+    setBoard(freshBoard);
+    setCalls([]);
+    setMarks([12]);
+    setWon(false);
     setRunning(false);
     setCountdown(3);
+    setRoomStarted(true);
+    setPage("game");
   }
   function drawOne() {
     setCalls((prev) => {
@@ -94,7 +106,12 @@ export default function App() {
   useEffect(() => {
     if (page !== "game" || countdown <= 0) return;
     const timer = setTimeout(() => {
-      if (countdown === 1) { setCountdown(0); setRunning(true); }
+      if (countdown === 1) {
+        setCountdown(0);
+        // Release the first ball immediately when the countdown ends.
+        setCalls((prev) => { const next = draw(prev); return next == null ? prev : [...prev, next]; });
+        setRunning(true);
+      }
       else setCountdown((v) => v - 1);
     }, 1000);
     return () => clearTimeout(timer);
