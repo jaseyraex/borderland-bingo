@@ -1,1 +1,123 @@
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;600;700&family=Playfair+Display:ital,wght@0,600;1,600&display=swap');*{box-sizing:border-box}body{margin:0;background:#101411;color:#f2eee6;font-family:"DM Sans",sans-serif}.shell{max-width:1200px;margin:auto;padding:0 25px;min-height:100vh;display:flex;flex-direction:column}header,footer{display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #303831;padding:20px 0;color:#7f897f;font-size:10px;letter-spacing:2px}.logo{color:#c9a86a;font-size:22px}.logo b{font-size:12px;letter-spacing:3px;color:#eee}.logo small{display:block;margin-left:27px;letter-spacing:4px;font-size:9px}.hero{text-align:center;padding:90px 15px;flex:1}.hero small,main small{letter-spacing:2px;color:#b6a47f;font-size:10px}.hero h1{font-size:clamp(58px,9vw,100px);line-height:.95;margin:22px 0;letter-spacing:-4px}.hero i{font-family:"Playfair Display",serif;color:#c9a86a}.hero p{color:#aab2aa;line-height:1.8}.tags{font-size:10px;letter-spacing:2px;color:#778078;margin-top:35px}button{cursor:pointer;border:0;border-radius:7px;padding:14px 20px;background:#c9a86a;color:#161915;font-weight:700;letter-spacing:1px;margin:6px}button:hover{filter:brightness(1.1)}button:disabled{opacity:.35;cursor:not-allowed}.alt{background:#242a26;color:#eee;border:1px solid #424b43}.panel{max-width:650px;margin:40px auto;background:#1a201c;border:1px solid #343d35;border-radius:14px;padding:28px;width:100%}.panel h2,.game h2{font-family:"Playfair Display",serif;font-size:32px}.back{background:none;color:#9da69e;padding:5px}.panel label{display:block;color:#abb3ab;font-size:10px;letter-spacing:2px;margin:18px 0 8px}.panel input{width:100%;padding:12px;background:#101411;border:1px solid #3c453d;border-radius:7px;color:white}.code{font-size:28px;letter-spacing:5px;color:#d5b777;background:#101411;padding:14px;text-align:center;border:1px dashed #56604f;border-radius:8px}.copy{font-size:10px;padding:8px}.patterns{display:flex;flex-wrap:wrap}.patterns button{background:#252c27;color:#aab3ab;border:1px solid #3a433b;border-radius:25px;padding:8px 12px;font-size:11px}.patterns .chosen{color:#d7bd84;border-color:#c9a86a;background:#302b21}.players{padding:10px;background:#252c27;border-radius:7px}.players small{float:right;color:#c9a86a}.hint{color:#7f897f;text-align:center;font-size:11px}.game{display:grid;grid-template-columns:minmax(0,1fr) 270px;gap:22px;margin:35px 0;position:relative}.board-area,aside{background:#1a201c;border:1px solid #343d35;border-radius:13px;padding:20px}.gamehead{display:flex;justify-content:space-between;align-items:center}.small{padding:8px 12px;font-size:10px}.letters,.board{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}.letters{text-align:center;color:#c9a86a;margin:8px 0}.board button{aspect-ratio:1;margin:0;background:#252c27;border:1px solid #3b443c;color:#eee;font-size:clamp(14px,2vw,23px);padding:4px}.board .called{box-shadow:inset 0 0 0 2px #c9a86a;color:#d8bc7d}.board .marked{background:#c9a86a;color:#171a16}.board .free{font-size:11px;color:#c9a86a;background:#302b21}.claim{width:100%;background:#303831;color:#929b93;margin:15px 0}.claim.ready{background:#c9a86a;color:#171a16;animation:pulse 1.2s infinite}.ball{height:125px;width:125px;margin:20px auto;border-radius:50%;display:grid;place-items:center;background:radial-gradient(circle at 30% 25%,#fff9e6,#d6b674 42%,#98733a);color:#181a16;font-size:30px;font-weight:bold;box-shadow:0 12px 30px #0005}.aside button{width:100%}aside button{width:100%}aside h3{font-size:11px;letter-spacing:2px;color:#aab2aa;margin-top:25px}.history{display:flex;flex-wrap:wrap;gap:5px;max-height:170px;overflow:auto}.history span{background:#29312b;border-radius:4px;padding:5px 7px;font-size:10px}.text{background:none;color:#9da69e}.overlay{position:fixed;inset:0;background:#000b;display:grid;place-items:center;padding:20px}.winbox{background:#1a201c;border:1px solid #c9a86a;border-radius:14px;text-align:center;padding:30px;width:min(380px,100%)}.winbox div{font-size:48px}.winbox h1{font-family:"Playfair Display",serif;color:#c9a86a;font-size:50px}footer{border-top:1px solid #303831;border-bottom:0;margin-top:auto;padding:20px 0}footer span{color:#59635a}@keyframes pulse{50%{box-shadow:0 0 0 5px #c9a86a22}}@media(max-width:700px){.shell{padding:0 13px}.hero{padding:65px 0}.hero h1{letter-spacing:-2px}.game{grid-template-columns:1fr}.game aside{order:-1}.ball{width:105px;height:105px}.board-area{padding:12px}.board,.letters{gap:4px}.panel{padding:20px}}
+.create-fields{max-width:360px;margin:25px auto 15px;text-align:left}.create-fields label,.speed-label{display:block;color:#abb3ab;font-size:10px;letter-spacing:2px;margin:12px 0 6px}.create-fields input,aside select{width:100%;padding:12px;background:#101411;border:1px solid #3c453d;border-radius:7px;color:white;margin-bottom:8px}.game-actions{display:flex;flex-wrap:wrap;justify-content:flex-end}.caller-status{text-align:center;color:#c9a86a;font-size:10px;letter-spacing:1px}.speed-label{margin-top:8px}aside select{margin-bottom:10px}
+
+
+/* =========================
+   BORDERLAND BINGO UI V3
+   Warm editorial home + premium game table
+   ========================= */
+:root{
+  --paper:#f4f0e7;
+  --paper-2:#e9e2d5;
+  --ink:#202420;
+  --muted-ink:#70746d;
+  --red:#9e3037;
+  --red-dark:#74242b;
+  --gold:#c4a263;
+  --game-bg:#171d19;
+  --game-panel:#202821;
+  --game-tile:#2a342d;
+  --game-line:#3b493d;
+}
+body{
+  background:var(--paper);
+  color:var(--ink);
+  background-image:radial-gradient(circle at 8% 4%,#fff9ed 0,transparent 25%),
+                   radial-gradient(circle at 95% 80%,#e8dfcf 0,transparent 22%);
+}
+.shell{max-width:1320px;padding:0 34px}
+header,footer{border-color:#d5cec1;color:#77776f}
+.logo{color:var(--red);font-size:24px}
+.logo b{color:var(--ink);font-weight:800}
+header>span{color:#77776f}
+.hero{padding:76px 20px 88px}
+.hero small,main small{color:var(--red);font-weight:700}
+.hero h1{color:var(--ink);font-size:clamp(62px,9vw,112px);letter-spacing:-5px}
+.hero h1 i{color:var(--red)}
+.hero p{color:#666b64;font-size:15px}
+.create-fields label,.panel label,.speed-label{color:#77776f;font-weight:700}
+.create-fields input,.panel input,aside select{
+  background:#fffdf8;color:var(--ink);border:1px solid #d6cfc2;
+  box-shadow:0 2px 5px #00000005;
+}
+.create-fields input:focus,.panel input:focus,aside select:focus{outline:2px solid #c4a26355;border-color:var(--gold)}
+button{background:var(--red);color:#fff;border-radius:10px;box-shadow:0 4px 12px #7a272b18;transition:transform .16s,filter .16s,box-shadow .16s}
+button:hover{filter:brightness(1.06);transform:translateY(-1px);box-shadow:0 6px 16px #7a272b20}
+.hero>button{min-width:180px}
+.alt{background:#fffdf8;color:var(--ink);border:1px solid #d4ccbd;box-shadow:none}
+.tags{color:#77776f}
+.panel{background:#fffdf8;border:1px solid #ded6c8;border-radius:18px;box-shadow:0 16px 45px #3d332015;color:var(--ink)}
+.panel h2,.game h2{color:var(--ink)}
+.panel .back{color:var(--red)}
+.code{background:#f3eee4;color:var(--red);border-color:#c9b99a}
+.copy{background:var(--red);color:#fff}
+.patterns button{background:#f1ece2;color:#5c6159;border-color:#ddd4c5}
+.patterns .chosen{background:#f5e7d5;color:var(--red-dark);border-color:#c79c65}
+.players{background:#f3eee4;color:var(--ink)}
+.players small{color:var(--red)}
+.hint{color:#88877f}
+.tags{letter-spacing:1.6px}
+.game{
+  background:var(--game-bg);color:#f4f0e7;border-radius:20px;padding:16px;
+  border:1px solid #333d34;box-shadow:0 18px 42px #11181220;
+}
+.board-area,aside{background:var(--game-panel);border:1px solid #39453b;border-radius:16px;padding:22px}
+.game h2{color:#f4f0e7;font-size:28px;margin:8px 0}
+.game small{color:#c7a86a}
+.gamehead{gap:12px}
+.game-actions{gap:4px}
+.game .alt{background:#2b352e;color:#f4f0e7;border-color:#455246;box-shadow:none}
+.game .small{border-radius:8px}
+.letters b{font-size:17px;color:#d2b477}
+.board{gap:8px}
+.board button{
+  border-radius:12px;background:var(--game-tile);border:1px solid var(--game-line);
+  color:#f4f0e7;font-weight:700;aspect-ratio:1;transition:background .15s,transform .15s,box-shadow .15s;
+}
+.board button:hover{transform:translateY(-2px);filter:none;background:#344239}
+.board .called{box-shadow:inset 0 0 0 2px #c8a663;color:#e4c783;background:#344238}
+.board .marked{background:#c7a566;color:#1b211b;border:1px solid #e1c58c;box-shadow:0 4px 10px #c7a56630}
+.board .free{background:#3b3223;color:#d7b979;border-color:#806b42}
+.claim{background:#344038;color:#9ca69c;border-radius:12px}
+.claim.ready{background:#c7a566;color:#1c211b}
+aside{position:relative}
+aside>small{display:block;text-align:center;letter-spacing:1.6px}
+.ball{
+  height:145px;width:145px;margin:22px auto;
+  background:radial-gradient(circle at 30% 25%,#fff8e6,#d8b975 43%,#98743d 75%);
+  border:5px solid #ead7a9;color:#24231c;
+  box-shadow:0 0 0 8px #c7a56612,0 14px 28px #0005;
+  font-size:32px;transition:transform .2s;
+}
+.caller-status{background:#2c372e;border:1px solid #465346;padding:9px;border-radius:99px}
+aside select{background:#2a342d;color:#f4f0e7;border-color:#465346}
+aside button{border-radius:9px}
+aside h3{color:#d5b87b}
+.history span{background:#303c33;color:#eee;border:1px solid #455346;border-radius:6px}
+.text{background:transparent;color:#c6a86b;box-shadow:none}
+.overlay{background:#101510d9;backdrop-filter:blur(6px)}
+.winbox{background:#202821;border:1px solid #c7a566;box-shadow:0 20px 70px #0007}
+.winbox h1{color:#d2b477}
+footer{color:#77776f}
+footer span{color:#a09a8e}
+@media(max-width:800px){
+  .shell{padding:0 16px}
+  .hero{padding:52px 8px 65px}
+  .hero h1{letter-spacing:-3px}
+  .game{padding:8px;gap:10px;border-radius:14px}
+  .board-area,aside{padding:14px}
+  .board{gap:5px}
+  .board button{border-radius:8px}
+  .gamehead{align-items:flex-start;flex-direction:column}
+  .game-actions{width:100%;justify-content:space-between}
+  .game-actions button{flex:1}
+  .ball{width:112px;height:112px;font-size:25px}
+}
+@media(max-width:440px){
+  .hero>button{width:100%;max-width:310px}
+  .create-fields{width:100%}
+  .board button{font-size:15px}
+  .letters b{font-size:14px}
+  .game h2{font-size:22px}
+  .small{font-size:9px;padding:8px}
+}
