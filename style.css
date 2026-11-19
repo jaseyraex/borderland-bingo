@@ -149,3 +149,15 @@ footer span{color:#a09a8e}
 .participant-summary{display:flex;justify-content:space-between;gap:12px;align-items:center;padding:12px 14px;background:#f1e8d8;border:1px solid #d8c6a8;border-radius:9px;margin:18px 0;color:#302e28;font-size:12px}.participant-summary span{color:#8b8172;font-size:11px}
 .waiting-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.participant-list,.activity-feed{border:1px solid #ded5c7;background:#fffdf8;border-radius:9px;padding:12px;min-width:0}.participant-list h3,.activity-feed h3{font-size:10px;letter-spacing:1.5px;color:#9e3037;margin:0 0 10px}.participant{background:#f3eee5;border:1px solid #ded5c7;border-radius:7px;padding:10px;margin:5px 0;font-size:12px;color:#333}.participant small{float:right;color:#9e3037}.activity-feed p{font-size:11px;color:#777;margin:6px 0}.game-participants{margin-top:16px;border:1px solid #ded5c7;border-radius:9px;background:#fffdf8;padding:12px;color:#333;font-size:11px}.game-participants>div{display:flex;gap:5px;flex-wrap:wrap;margin-top:8px}.game-participants span{padding:5px 8px;border-radius:5px;background:#f1e8d8}.game-participants h4{color:#9e3037;font-size:10px;letter-spacing:1.5px;margin:15px 0 6px}.game-participants p{color:#777;margin:5px 0}.dark-mode .participant-summary,.dark-mode .game-participants{background:#30343a!important;color:#e7e9ea!important;border-color:#454a50!important}.dark-mode .participant-summary span,.dark-mode .activity-feed p,.dark-mode .game-participants p{color:#9aa0a6!important}.dark-mode .game-participants span{background:#3b4148!important;color:#e7e9ea!important}
 @media(max-width:600px){.waiting-grid{grid-template-columns:1fr}.participant-summary{align-items:flex-start;flex-direction:column}}
+
+/* Celebration overlay confetti */
+.overlay{overflow:hidden}
+.confetti{position:absolute;inset:0;overflow:hidden;pointer-events:none}
+.confetti span{position:absolute;top:-14px;width:9px;height:14px;border-radius:2px;opacity:.95;animation:confetti-fall linear infinite;will-change:transform}
+.confetti span:nth-child(5n){background:#c9a86a;width:7px;height:7px;border-radius:50%}
+.confetti span:nth-child(5n+1){background:#a9323b}
+.confetti span:nth-child(5n+2){background:#f1dfbd}
+.confetti span:nth-child(5n+3){background:#8d9d76}
+.confetti span:nth-child(5n+4){background:#d8a55e}
+@keyframes confetti-fall{0%{transform:translate3d(0,-8vh,0) rotate(0deg);opacity:0}10%{opacity:1}100%{transform:translate3d(45px,110vh,0) rotate(720deg);opacity:.85}}
+.winbox{position:relative;z-index:1}

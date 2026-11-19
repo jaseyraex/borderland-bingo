@@ -165,7 +165,7 @@ export default function App() {
         <h3>CALL HISTORY <small>{calls.length}/75</small></h3><div className="history">{calls.slice().reverse().map((n) => <span key={n}>{letters[Math.floor((n - 1) / 15)]}{n}</span>)}</div>
         <button className="alt action-button end-button" onClick={endRound}>END ROUND / NEW ROUND</button>
       </aside>
-      {won && <div className="overlay"><div className="winbox"><div>🏆</div><small>CLAIM CONFIRMED — PROTOTYPE</small><h1>BINGO!</h1><button onClick={() => setPage("lobby")}>BACK TO LOBBY</button></div></div>}
+      {won && <div className="overlay"><div className="confetti" aria-hidden="true">{Array.from({length: 70}, (_, i) => <span key={i} style={{left: `${(i * 37) % 100}%`, animationDelay: `${(i % 17) * -0.23}s`, animationDuration: `${3.2 + (i % 9) * 0.35}s`, transform: `rotate(${(i * 53) % 360}deg`}} />)}</div><div className="winbox"><div>🏆</div><small>CONGRATULATIONS!</small><h1>BINGO!</h1><button onClick={() => setPage("lobby")}>BACK TO LOBBY</button></div></div>}
     </main>}
     <footer>♠ BORDERLAND BINGO <span>FRONTEND PROTOTYPE</span></footer>
   </div>;
