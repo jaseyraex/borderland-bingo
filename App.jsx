@@ -1,23 +1,151 @@
-import React,{useEffect,useState}from"react";import{card,draw,win}from"./game.js";
-const opts=["Horizontal","Vertical","Diagonal","Corners","X","Blackout"],letters=["B","I","N","G","O"];
-export default function App(){
-const[page,P]=useState("home"),[name,N]=useState(""),[roomName,RN]=useState(""),[code,C]=useState(""),[patterns,S]=useState(["Horizontal"]),[board,B]=useState(card),[calls,Q]=useState([]),[marks,M]=useState([12]),[run,R]=useState(false),[won,W]=useState(false),[speed,SP]=useState(10),[countdown,CD]=useState(0),[dark,DK]=useState(false);
-function create(){if(!name.trim()){alert("Please enter your player name.");return}P("create")}
-function createRoom(){if(!roomName.trim()){alert("Please enter a room name.");return}C(Math.random().toString(36).slice(2,7).toUpperCase());P("lobby")}
-function start(){P("game");R(false);CD(3)}
-function call(){Q(p=>{let n=draw(p);return n?[...p,n]:p})}
-useEffect(()=>{if(page!=="game"||countdown<=0)return;let t=setTimeout(()=>countdown===1?(CD(0),R(true)):CD(c=>c-1),1000);return()=>clearTimeout(t)},[page,countdown]);
-useEffect(()=>{if(page!=="game"||!run||won||calls.length>=75)return;let t=setInterval(()=>Q(p=>{let n=draw(p);return n?[...p,n]:p}),speed*1000);return()=>clearInterval(t)},[page,run,won,calls.length,speed]);
-function toggle(i){let v=board[Math.floor(i/5)][i%5];if(v==="FREE"||!calls.includes(v))return;M(m=>m.includes(i)?m.filter(x=>x!==i):[...m,i])}
-const valid=win(board,marks,patterns,calls);
-function home(){if(confirm("Return Home? This leaves the current game.")){R(false);CD(0);P("home")}}
-function reset(){if(confirm("Reset all called numbers?")){Q([]);M([12]);W(false);R(false);CD(0)}}
-function newRound(){if(confirm("End this round and return to the lobby?")){B(card());Q([]);M([12]);W(false);R(false);CD(0);P("lobby")}}
-const speedOptions=<><option value="3">Every 3 seconds</option><option value="5">Every 5 seconds</option><option value="8">Every 8 seconds</option><option value="10">Every 10 seconds</option><option value="15">Every 15 seconds</option><option value="20">Every 20 seconds</option></>;
-return <div className={"shell "+(dark?"dark-mode":"")}><header><div className="brand"><img src="/borderland-bingo-logo.png" alt="Borderland Bingo"/></div><span>COMMUNITY GAME</span><button className="theme-toggle" onClick={()=>DK(v=>!v)}>{dark?"☀ LIGHT":"☾ DARK"}</button></header>
-{page==="home"&&<main className="hero"><img className="hero-logo" src="/borderland-bingo-logo.png" alt="Borderland Bingo"/><p>Gather your people. Watch the numbers. Mark your card.<br/>One call could change everything.</p><div className="home-fields"><label>PLAYER NAME</label><input value={name} onChange={e=>N(e.target.value)} placeholder="Enter your player name"/></div><button onClick={create}>CREATE A GAME ↗</button><button className="alt" onClick={()=>{if(!name.trim()){alert("Please enter your player name first.");return}P("join")}}>JOIN A GAME</button><div className="tags">75 BALLS　·　5×5 CARDS　·　PLAY TOGETHER</div></main>}
-{page==="create"&&<main className="panel"><button className="back" onClick={()=>P("home")}>← BACK</button><small>HOST SETUP</small><h2>Create a game</h2><label>ROOM NAME</label><input value={roomName} onChange={e=>RN(e.target.value)} placeholder="e.g. Friday Guild Bingo"/><h3>WINNING PATTERNS</h3><div className="patterns">{opts.map(o=><button className={patterns.includes(o)?"chosen":""} onClick={()=>S(p=>p.includes(o)?p.filter(x=>x!==o):[...p,o])}>{o}</button>)}</div><label>CALL INTERVAL</label><select value={speed} onChange={e=>SP(+e.target.value)}>{speedOptions}</select><button onClick={createRoom}>CREATE ROOM</button></main>}
-{page==="join"&&<main className="panel"><button className="back" onClick={()=>P("home")}>← BACK</button><h2>Join a game</h2><p className="hint">Player name: <b>{name}</b></p><label>ROOM CODE</label><input value={code} onChange={e=>C(e.target.value.toUpperCase())}/><button onClick={()=>alert("Prototype: joining is simulated. Started rooms will reject new players in the multiplayer version.")}>JOIN ROOM</button><p className="hint">Players may join only before the host starts.</p></main>}
-{page==="lobby"&&<main className="panel"><button className="back" onClick={()=>P("home")}>← HOME</button><small>WAITING ROOM</small><h2>{roomName||"Borderland Bingo"}</h2><p>ROOM CODE</p><div className="code">{code}<button className="copy" onClick={()=>navigator.clipboard?.writeText(code)}>COPY</button></div><h3>WINNING PATTERNS</h3><div className="patterns">{opts.map(o=><button className={patterns.includes(o)?"chosen":""} onClick={()=>S(p=>p.includes(o)?p.filter(x=>x!==o):[...p,o])}>{o}</button>)}</div><label>CALL INTERVAL</label><select value={speed} onChange={e=>SP(+e.target.value)}>{speedOptions}</select><p className="players">♟ {name} <small>HOST</small></p><button onClick={start}>START GAME</button><p className="hint">3-second countdown before caller begins.</p></main>}
-{page==="game"&&<main className="game"><section className="board-area"><div className="gamehead"><div><small>ROOM {code}</small><h2>{roomName||"Borderland Bingo"}</h2></div><div className="game-actions"><button className="alt small" onClick={()=>{R(!run);CD(0)}}>{run?"PAUSE CALLER":"RESUME CALLER"}</button><button className="alt small" onClick={home}>⌂ HOME</button></div></div><div className="letters">{letters.map(x=><b>{x}</b>)}</div><div className="board">{board.flat().map((v,i)=><button className={(marks.includes(i)?"marked ":"")+(calls.includes(v)?"called ":"")+(v==="FREE"?"free":"")} onClick={()=>toggle(i)}>{v}</button>)}</div><button className={"claim "+(valid?"ready":"")} disabled={!valid||won} onClick={()=>{W(true);R(false)}}>{won?"CLAIM SUBMITTED":valid?"🎉 BINGO — CLAIM YOUR WIN":"BINGO"}</button><p className="hint">Called numbers glow. Click a tile to mark it.</p></section><aside><small>LAST NUMBER CALLED</small><div className="ball">{calls.length?letters[Math.floor((calls.at(-1)-1)/15)]+"-"+calls.at(-1):"—"}</div>{countdown>0&&<div className="countdown">STARTING IN<strong>{countdown}</strong></div>}<p className="caller-status">{run&&!won&&calls.length<75?`AUTO-CALLING EVERY ${speed} SECONDS`:"CALLER PAUSED"}</p><label className="speed-label">CALL INTERVAL</label><select value={speed} onChange={e=>SP(+e.target.value)}>{speedOptions}</select><button onClick={call} disabled={!run||calls.length===75}>CALL NEXT MANUALLY</button><button className="alt action-button" onClick={reset}>RESET CALLS</button><h3>CALL HISTORY <small>{calls.length}/75</small></h3><div className="history">{calls.slice().reverse().map(n=><span>{letters[Math.floor((n-1)/15)]}{n}</span>)}</div><button className="alt action-button end-button" onClick={newRound}>END GAME / NEW ROUND</button></aside>{won&&<div className="overlay"><div className="winbox"><div>🏆</div><small>CLAIM CONFIRMED — PROTOTYPE</small><h1>BINGO!</h1><button onClick={()=>P("lobby")}>BACK TO LOBBY</button></div></div>}</main>}
-<footer>♠ BORDERLAND BINGO <span>PROTOTYPE V4</span></footer></div>}
+import React, { useEffect, useState } from "react";
+import { card, draw, win } from "./game.js";
+
+const patterns = ["Horizontal", "Vertical", "Diagonal", "Corners", "X", "Blackout"];
+const letters = ["B", "I", "N", "G", "O"];
+const speedChoices = [3, 5, 8, 10, 15, 20, 30];
+const ballLabel = (n) => n ? `${letters[Math.floor((n - 1) / 15)]}-${n}` : "—";
+
+export default function App() {
+  const [page, setPage] = useState("home");
+  const [name, setName] = useState("");
+  const [roomName, setRoomName] = useState("");
+  const [code, setCode] = useState("");
+  const [patternsChosen, setPatternsChosen] = useState(["Horizontal"]);
+  const [board, setBoard] = useState(card());
+  const [calls, setCalls] = useState([]);
+  const [marks, setMarks] = useState([12]);
+  const [running, setRunning] = useState(false);
+  const [won, setWon] = useState(false);
+  const [speed, setSpeed] = useState(10);
+  const [countdown, setCountdown] = useState(0);
+  const [dark, setDark] = useState(false);
+  const [roomStarted, setRoomStarted] = useState(false);
+
+  const selectedWin = win(board, marks, patternsChosen, calls);
+
+  function create() {
+    if (!name.trim()) return alert("Please enter your player name first.");
+    setPage("create");
+  }
+  function createRoom() {
+    if (!roomName.trim()) return alert("Please enter a room name.");
+    if (!patternsChosen.length) return alert("Choose at least one winning pattern.");
+    setCode(Math.random().toString(36).slice(2, 7).toUpperCase());
+    setRoomStarted(false);
+    setPage("lobby");
+  }
+  function startGame() {
+    setRoomStarted(true);
+    setPage("game");
+    setRunning(false);
+    setCountdown(3);
+  }
+  function drawOne() {
+    setCalls((prev) => {
+      const next = draw(prev);
+      return next == null ? prev : [...prev, next];
+    });
+  }
+  function toggleMark(index) {
+    const value = board[Math.floor(index / 5)][index % 5];
+    if (value === "FREE" || !calls.includes(value)) return;
+    setMarks((prev) => prev.includes(index) ? prev.filter((x) => x !== index) : [...prev, index]);
+  }
+  function home() {
+    if (confirm("Return to Home? This will leave the current prototype game.")) {
+      setRunning(false); setCountdown(0); setPage("home"); setRoomStarted(false);
+    }
+  }
+  function resetCalls() {
+    if (confirm("Reset all called numbers and marked tiles for this round?")) {
+      setCalls([]); setMarks([12]); setWon(false); setRunning(false); setCountdown(0);
+    }
+  }
+  function endRound() {
+    if (confirm("End this round and return to the lobby? A fresh card and caller sequence will be created.")) {
+      setBoard(card()); setCalls([]); setMarks([12]); setWon(false); setRunning(false); setCountdown(0); setPage("lobby");
+    }
+  }
+
+  // The 3-second pre-game countdown; the caller begins after it reaches zero.
+  useEffect(() => {
+    if (page !== "game" || countdown <= 0) return;
+    const timer = setTimeout(() => {
+      if (countdown === 1) { setCountdown(0); setRunning(true); }
+      else setCountdown((v) => v - 1);
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, [page, countdown]);
+
+  // Automatic calls. Changing the speed while running immediately updates the timer.
+  useEffect(() => {
+    if (page !== "game" || !running || won || calls.length >= 75) return;
+    const timer = setInterval(drawOne, speed * 1000);
+    return () => clearInterval(timer);
+  }, [page, running, won, calls.length, speed]);
+
+  const speedSelect = <select value={speed} onChange={(e) => setSpeed(Number(e.target.value))}>
+    {speedChoices.map((s) => <option key={s} value={s}>Every {s} seconds</option>)}
+  </select>;
+
+  return <div className={`shell ${dark ? "dark-mode" : ""}`}>
+    <header>
+      <div className="brand"><img src="/borderland-bingo-logo.png" alt="Borderland Bingo" /></div>
+      <span>COMMUNITY GAME</span>
+      <button className="theme-toggle" onClick={() => setDark((v) => !v)}>{dark ? "☀ LIGHT" : "☾ DARK"}</button>
+    </header>
+
+    {page === "home" && <main className="hero">
+      <img className="hero-logo" src="/borderland-bingo-logo.png" alt="Borderland Bingo" />
+      <p>Gather your people. Watch the numbers. Mark your card.<br />One call could change everything.</p>
+      <div className="home-fields"><label>PLAYER NAME</label><input value={name} onChange={(e) => setName(e.target.value)} placeholder="Enter your player name" maxLength={24} /></div>
+      <div className="home-actions"><button onClick={create}>CREATE A GAME ↗</button><button className="alt" onClick={() => { if (!name.trim()) return alert("Please enter your player name first."); setPage("join"); }}>JOIN A GAME</button></div>
+      <div className="tags">75 BALLS　·　5×5 CARDS　·　PLAY TOGETHER</div>
+    </main>}
+
+    {page === "create" && <main className="panel">
+      <button className="back" onClick={() => setPage("home")}>← BACK</button><small>HOST SETUP</small><h2>Create a game</h2>
+      <label>ROOM NAME</label><input value={roomName} onChange={(e) => setRoomName(e.target.value)} placeholder="e.g. Friday Guild Bingo" maxLength={40} />
+      <h3>WINNING PATTERNS</h3><div className="patterns">{patterns.map((p) => <button key={p} className={patternsChosen.includes(p) ? "chosen" : ""} onClick={() => setPatternsChosen((old) => old.includes(p) ? old.filter((x) => x !== p) : [...old, p])}>{p}</button>)}</div>
+      <label>CALL INTERVAL</label>{speedSelect}<p className="hint">Choose the call speed now. You can change it during the game.</p>
+      <button className="primary-wide" onClick={createRoom}>CREATE ROOM</button>
+    </main>}
+
+    {page === "join" && <main className="panel">
+      <button className="back" onClick={() => setPage("home")}>← BACK</button><small>PLAYER SETUP</small><h2>Join a game</h2><p className="hint">Joining as <b>{name}</b></p>
+      <label>ROOM CODE</label><input value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} placeholder="Enter room code" maxLength={5}/>
+      <button className="primary-wide" onClick={() => alert("This prototype is not connected to multiplayer yet. In the multiplayer version, rooms will be listed and started rooms will reject joins.")}>JOIN ROOM</button>
+      <p className="hint">Players can join only while the host is in the lobby. Once the game starts, joining is closed.</p>
+    </main>}
+
+    {page === "lobby" && <main className="panel lobby">
+      <button className="back" onClick={() => setPage("home")}>← HOME</button><small>WAITING ROOM</small><h2>{roomName}</h2>
+      <p className="room-label">ROOM CODE</p><div className="code">{code}<button className="copy" onClick={() => navigator.clipboard?.writeText(code)}>COPY</button></div>
+      <h3>WINNING PATTERNS</h3><div className="patterns">{patterns.map((p) => <button key={p} className={patternsChosen.includes(p) ? "chosen" : ""} onClick={() => setPatternsChosen((old) => old.includes(p) ? old.filter((x) => x !== p) : [...old, p])}>{p}</button>)}</div>
+      <label>CALL INTERVAL</label>{speedSelect}<p className="players">♟ {name} <small>HOST</small></p><button className="primary-wide" onClick={startGame}>START GAME</button><p className="hint">3-second countdown before the first ball. New players cannot join after the game starts.</p>
+    </main>}
+
+    {page === "game" && <main className="game">
+      <section className="board-area">
+        <div className="gamehead"><div><small>ROOM {code}</small><h2>{roomName}</h2></div><div className="game-actions"><button className="alt small" onClick={() => { setRunning((v) => !v); setCountdown(0); }}>{running ? "PAUSE CALLER" : "RESUME CALLER"}</button><button className="alt small" onClick={home}>⌂ HOME</button></div></div>
+        <div className="letters">{letters.map((l) => <b key={l}>{l}</b>)}</div>
+        <div className="board">{board.flat().map((v, i) => <button key={i} className={`${marks.includes(i) ? "marked " : ""}${calls.includes(v) ? "called " : ""}${v === "FREE" ? "free" : ""}`} onClick={() => toggleMark(i)}>{v}</button>)}</div>
+        <button className={`claim ${selectedWin ? "ready" : ""}`} disabled={!selectedWin || won} onClick={() => { setWon(true); setRunning(false); }}>{won ? "CLAIM SUBMITTED" : selectedWin ? "🎉 BINGO — CLAIM YOUR WIN" : "BINGO"}</button>
+        <p className="hint">Called numbers highlight. Mark them manually; you can mark called numbers later.</p>
+      </section>
+      <aside>
+        <small>LAST NUMBER CALLED</small><div className="ball">{ballLabel(calls.at(-1))}</div>
+        {countdown > 0 && <div className="countdown">STARTING IN<strong>{countdown}</strong></div>}
+        <p className="caller-status">{running && !won && calls.length < 75 ? `AUTO-CALLING EVERY ${speed} SECONDS` : "CALLER PAUSED"}</p>
+        <label className="speed-label">CALL INTERVAL · CHANGE LIVE</label>{speedSelect}
+        <button className="action-button" onClick={drawOne} disabled={countdown > 0 || calls.length >= 75}>CALL NEXT MANUALLY</button>
+        <button className="alt action-button" onClick={resetCalls}>RESET CALLS</button>
+        <h3>CALL HISTORY <small>{calls.length}/75</small></h3><div className="history">{calls.slice().reverse().map((n) => <span key={n}>{letters[Math.floor((n - 1) / 15)]}{n}</span>)}</div>
+        <button className="alt action-button end-button" onClick={endRound}>END ROUND / NEW ROUND</button>
+      </aside>
+      {won && <div className="overlay"><div className="winbox"><div>🏆</div><small>CLAIM CONFIRMED — PROTOTYPE</small><h1>BINGO!</h1><button onClick={() => setPage("lobby")}>BACK TO LOBBY</button></div></div>}
+    </main>}
+    <footer>♠ BORDERLAND BINGO <span>FRONTEND PROTOTYPE</span></footer>
+  </div>;
+}
