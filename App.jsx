@@ -21,6 +21,9 @@ export default function App() {
   const [countdown, setCountdown] = useState(0);
   const [dark, setDark] = useState(false);
   const [roomStarted, setRoomStarted] = useState(false);
+  const [participants, setParticipants] = useState([]);
+  const [activity, setActivity] = useState([]);
+  const ROOM_CAPACITY = 50;
 
   const selectedWin = win(board, marks, patternsChosen, calls);
 
@@ -33,6 +36,8 @@ export default function App() {
     if (!patternsChosen.length) return alert("Choose at least one winning pattern.");
     setCode(Math.random().toString(36).slice(2, 7).toUpperCase());
     setRoomStarted(false);
+    setParticipants([{ name, role: "HOST" }]);
+    setActivity([`${name} created the room`]);
     setPage("lobby");
   }
   function startGame() {
@@ -123,7 +128,7 @@ export default function App() {
       <button className="back" onClick={() => setPage("home")}>← HOME</button><small>WAITING ROOM</small><h2>{roomName}</h2>
       <p className="room-label">ROOM CODE</p><div className="code">{code}<button className="copy" onClick={() => navigator.clipboard?.writeText(code)}>COPY</button></div>
       <h3>WINNING PATTERNS</h3><div className="patterns">{patterns.map((p) => <button key={p} className={patternsChosen.includes(p) ? "chosen" : ""} onClick={() => setPatternsChosen((old) => old.includes(p) ? old.filter((x) => x !== p) : [...old, p])}>{p}</button>)}</div>
-      <label>CALL INTERVAL</label>{speedSelect}<p className="players">♟ {name} <small>HOST</small></p><button className="primary-wide" onClick={startGame}>START GAME</button><p className="hint">3-second countdown before the first ball. New players cannot join after the game starts.</p>
+      <label>CALL INTERVAL</label>{speedSelect}<div className="participant-summary"><strong>PARTICIPANTS: {participants.length}/{ROOM_CAPACITY}</strong><span>Joining closes when the game starts.</span></div><div className="waiting-grid"><div className="participant-list"><h3>IN THE ROOM</h3>{participants.map((p,i)=><div className="participant" key={i}>♟ {p.name}<small>{p.role}</small></div>)}</div><div className="activity-feed"><h3>ROOM ACTIVITY</h3>{activity.map((a,i)=><p key={i}>• {a}</p>)}</div></div><button className="primary-wide" onClick={startGame}>START GAME</button><p className="hint">3-second countdown before the first ball. New players cannot join after the game starts.</p>
     </main>}
 
     {page === "game" && <main className="game">
@@ -132,7 +137,7 @@ export default function App() {
         <div className="letters">{letters.map((l) => <b key={l}>{l}</b>)}</div>
         <div className="board">{board.flat().map((v, i) => <button key={i} className={`${marks.includes(i) ? "marked " : ""}${calls.includes(v) ? "called " : ""}${v === "FREE" ? "free" : ""}`} onClick={() => toggleMark(i)}>{v}</button>)}</div>
         <button className={`claim ${selectedWin ? "ready" : ""}`} disabled={!selectedWin || won} onClick={() => { setWon(true); setRunning(false); }}>{won ? "CLAIM SUBMITTED" : selectedWin ? "🎉 BINGO — CLAIM YOUR WIN" : "BINGO"}</button>
-        <p className="hint">Called numbers highlight. Mark them manually; you can mark called numbers later.</p>
+        <p className="hint">Called numbers highlight. Mark them manually; you can mark called numbers later.</p><div className="game-participants"><strong>PARTICIPANTS {participants.length}/{ROOM_CAPACITY}</strong><div>{participants.map((p,i)=><span key={i}>{p.name}{p.role === "HOST" ? " · HOST" : ""}</span>)}</div><h4>ROOM ACTIVITY</h4>{activity.map((a,i)=><p key={i}>• {a}</p>)}</div>
       </section>
       <aside>
         <small>LAST NUMBER CALLED</small><div className="ball">{ballLabel(calls.at(-1))}</div>
