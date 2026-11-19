@@ -5,6 +5,34 @@ const patterns = ["Horizontal", "Vertical", "Diagonal", "Corners", "X", "Blackou
 const letters = ["B", "I", "N", "G", "O"];
 const speedChoices = [3, 5, 8, 10, 15, 20, 30];
 const ballLabel = (n) => n ? `${letters[Math.floor((n - 1) / 15)]}-${n}` : "—";
+let audioCtx;
+function getAudioContext(){
+  if(!audioCtx){ const AC=window.AudioContext||window.webkitAudioContext; if(AC) audioCtx=new AC(); }
+  if(audioCtx?.state==='suspended') audioCtx.resume();
+  return audioCtx;
+}
+function tone(freq, duration=0.16, type='sine', volume=0.08, delay=0){
+  const ctx=getAudioContext(); if(!ctx) return;
+  const osc=ctx.createOscillator(), gain=ctx.createGain();
+  osc.type=type; osc.frequency.setValueAtTime(freq,ctx.currentTime+delay);
+  gain.gain.setValueAtTime(0.0001,ctx.currentTime+delay);
+  gain.gain.exponentialRampToValueAtTime(volume,ctx.currentTime+delay+0.015);
+  gain.gain.exponentialRampToValueAtTime(0.0001,ctx.currentTime+delay+duration);
+  osc.connect(gain); gain.connect(ctx.destination); osc.start(ctx.currentTime+delay); osc.stop(ctx.currentTime+delay+duration+0.03);
+}
+function ballSfx(){ tone(660,.12,'sine',.07); tone(880,.18,'triangle',.045,.06); }
+function bingoSfx(){ [523,659,784,1047].forEach((f,i)=>tone(f,.42,'triangle',.09,i*.08)); }
+function applauseSfx(){
+  const ctx=getAudioContext(); if(!ctx)return;
+  for(let i=0;i<26;i++){ const start=ctx.currentTime+i*.075; const noise=ctx.createBufferSource(); const buffer=ctx.createBuffer(1,Math.floor(ctx.sampleRate*.08),ctx.sampleRate); const data=buffer.getChannelData(0); for(let j=0;j<data.length;j++)data[j]=(Math.random()*2-1)*Math.exp(-j/data.length*7); noise.buffer=buffer; const filter=ctx.createBiquadFilter(); filter.type='highpass';filter.frequency.value=900+Math.random()*1200; const gain=ctx.createGain();gain.gain.value=.045+Math.random()*.04; noise.connect(filter);filter.connect(gain);gain.connect(ctx.destination);noise.start(start);noise.stop(start+.08); }
+}
+function startMusic(){
+  const ctx=getAudioContext(); if(!ctx)return;
+  const notes=[196,246.94,293.66,246.94,220,261.63,329.63,261.63]; let index=0;
+  const play=()=>{ if(!ctx||ctx.state==='closed')return; const base=notes[index++%notes.length]; tone(base,.9,'sine',.018);tone(base*1.5,1.15,'triangle',.009,.05);tone(base*2,.75,'sine',.006,.1); };
+  play(); const id=setInterval(play,1450); return ()=>clearInterval(id);
+}
+
 
 export default function App() {
   const [page, setPage] = useState("home");
@@ -24,8 +52,21 @@ export default function App() {
   const [participants, setParticipants] = useState([]);
   const [roomCapacity, setRoomCapacity] = useState("");
   const [sharedLink, setSharedLink] = useState(false);
+  const [musicOn, setMusicOn] = useState(() => localStorage.getItem("bb-music") !== "off");
+  const [sfxOn, setSfxOn] = useState(() => localStorage.getItem("bb-sfx") !== "off");
 
   const selectedWin = win(board, marks, patternsChosen, calls);
+
+  useEffect(() => { localStorage.setItem("bb-music", musicOn ? "on" : "off"); }, [musicOn]);
+  useEffect(() => { localStorage.setItem("bb-sfx", sfxOn ? "on" : "off"); }, [sfxOn]);
+  useEffect(() => { if(!musicOn) return; return startMusic(); }, [musicOn]);
+  const previousCallsRef = React.useRef(0);
+  useEffect(() => {
+    if(calls.length > previousCallsRef.current && sfxOn) ballSfx();
+    previousCallsRef.current = calls.length;
+  }, [calls.length, sfxOn]);
+  useEffect(() => { if(won && sfxOn) { bingoSfx(); setTimeout(() => { if(sfxOn) applauseSfx(); }, 450); } }, [won]);
+
 
   // Shared room links prefill the join screen with the room code.
   useEffect(() => {
@@ -58,6 +99,7 @@ export default function App() {
     setPage("lobby");
   }
   function startGame() {
+    getAudioContext(); // user gesture unlocks audio for this round
     // Starting/restarting from the lobby always begins a fresh round for everyone.
     // In this frontend prototype, the host's local card is regenerated here.
     let freshBoard = card();
@@ -132,7 +174,11 @@ export default function App() {
     <header>
       <div className="brand"><img src="/borderland-bingo-logo.png" alt="Borderland Bingo" /></div>
       <span>COMMUNITY GAME</span>
+      <div className="header-controls">
+      <button className={`audio-toggle ${musicOn ? "on" : ""}`} title={musicOn ? "Turn background music off" : "Turn background music on"} onClick={() => { getAudioContext(); setMusicOn(v => !v); }}>♫ {musicOn ? "MUSIC ON" : "MUSIC OFF"}</button>
+      <button className={`audio-toggle ${sfxOn ? "on" : ""}`} title={sfxOn ? "Turn sound effects off" : "Turn sound effects on"} onClick={() => { getAudioContext(); setSfxOn(v => !v); }}>🔊 {sfxOn ? "SFX ON" : "SFX OFF"}</button>
       <button className="theme-toggle" onClick={() => setDark((v) => !v)}>{dark ? "☀ LIGHT" : "☾ DARK"}</button>
+    </div>
     </header>
 
     {page === "home" && <main className="hero">
