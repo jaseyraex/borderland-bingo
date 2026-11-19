@@ -128,8 +128,8 @@ export default function App() {
       <button className="back" onClick={() => setPage("home")}>← BACK</button><small>HOST SETUP</small><h2>Create a game</h2>
       <label>ROOM NAME</label><input value={roomName} onChange={(e) => setRoomName(e.target.value)} placeholder="e.g. Friday Guild Bingo" maxLength={40} />
       <h3>WINNING PATTERNS</h3><div className="patterns">{patterns.map((p) => <button key={p} className={patternsChosen.includes(p) ? "chosen" : ""} onClick={() => setPatternsChosen((old) => old.includes(p) ? old.filter((x) => x !== p) : [...old, p])}>{p}</button>)}</div>
-      <label>CALL INTERVAL</label>{speedSelect}<p className="hint">Choose the call speed now. You can change it during the game.</p>
-      <label>ROOM CAPACITY</label><input type="number" min="1" max="50" value={roomCapacity} onChange={(e) => setRoomCapacity(e.target.value)} placeholder="Enter any number (max 50)" /><p className="hint">Choose any whole number from 1 to 50. The host is included in the capacity.</p>
+      <label>CALL INTERVAL</label><p className="hint">Choose the call speed now. You can change it during the game.</p>{speedSelect}
+      <label>ROOM CAPACITY</label><p className="hint">Choose any whole number from 1 to 50. The host is included in the capacity.</p><input type="number" min="1" max="50" value={roomCapacity} onChange={(e) => setRoomCapacity(e.target.value)} placeholder="Enter any number (max 50)" />
       <button className="primary-wide" onClick={createRoom}>CREATE ROOM</button>
     </main>}
 
