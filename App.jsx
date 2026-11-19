@@ -1,49 +1,11 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { card, draw, win } from "./game.js";
 
 const patterns = ["Horizontal", "Vertical", "Diagonal", "Corners", "X", "Blackout"];
 const letters = ["B", "I", "N", "G", "O"];
 const speedChoices = [3, 5, 8, 10, 15, 20, 30];
 const ballLabel = (n) => n ? `${letters[Math.floor((n - 1) / 15)]}-${n}` : "—";
-let audioCtx;
-function getAudioContext(){
-  if(!audioCtx){ const AC=window.AudioContext||window.webkitAudioContext; if(AC) audioCtx=new AC(); }
-  if(audioCtx?.state==='suspended') audioCtx.resume();
-  return audioCtx;
-}
-function tone(freq, duration=0.16, type='sine', volume=0.08, delay=0){
-  const ctx=getAudioContext(); if(!ctx) return;
-  const osc=ctx.createOscillator(), gain=ctx.createGain();
-  osc.type=type; osc.frequency.setValueAtTime(freq,ctx.currentTime+delay);
-  gain.gain.setValueAtTime(0.0001,ctx.currentTime+delay);
-  gain.gain.exponentialRampToValueAtTime(volume,ctx.currentTime+delay+0.015);
-  gain.gain.exponentialRampToValueAtTime(0.0001,ctx.currentTime+delay+duration);
-  osc.connect(gain); gain.connect(ctx.destination); osc.start(ctx.currentTime+delay); osc.stop(ctx.currentTime+delay+duration+0.03);
-}
-function ballSfx(){ tone(660,.12,'sine',.07); tone(880,.18,'triangle',.045,.06); }
-function bingoSfx(){ [523,659,784,1047].forEach((f,i)=>tone(f,.42,'triangle',.09,i*.08)); }
-function applauseSfx(){
-  const ctx=getAudioContext(); if(!ctx)return;
-  // Short, bright broadband slap noises with varied timing and resonance to resemble hand claps.
-  const clapTimes=[0,.09,.18,.31,.43,.57,.7,.82,1.01,1.14,1.28,1.43,1.59,1.72,1.86,2.02,2.18,2.34,2.5];
-  clapTimes.forEach((offset)=>{
-    const start=ctx.currentTime+offset+(Math.random()*.025);
-    const length=Math.floor(ctx.sampleRate*.075);
-    const buffer=ctx.createBuffer(1,length,ctx.sampleRate);
-    const data=buffer.getChannelData(0);
-    for(let i=0;i<length;i++){
-      const t=i/length;
-      // Sharp attack, noisy body, fast decay with a little irregularity.
-      data[i]=(Math.random()*2-1)*(Math.exp(-t*20)*(1-t)*1.5);
-    }
-    const noise=ctx.createBufferSource(); noise.buffer=buffer;
-    const band=ctx.createBiquadFilter(); band.type='bandpass'; band.frequency.value=1500+Math.random()*1100; band.Q.value=.65+Math.random()*.45;
-    const low=ctx.createBiquadFilter(); low.type='lowpass'; low.frequency.value=3500;
-    const gain=ctx.createGain(); gain.gain.setValueAtTime(.0001,start); gain.gain.exponentialRampToValueAtTime(.16+Math.random()*.12,start+.003); gain.gain.exponentialRampToValueAtTime(.0001,start+.075);
-    noise.connect(band); band.connect(low); low.connect(gain); gain.connect(ctx.destination);
-    noise.start(start); noise.stop(start+.08);
-  });
-}
+
 export default function App() {
   const [page, setPage] = useState("home");
   const [name, setName] = useState("");
@@ -62,17 +24,23 @@ export default function App() {
   const [participants, setParticipants] = useState([]);
   const [roomCapacity, setRoomCapacity] = useState("");
   const [sharedLink, setSharedLink] = useState(false);
-  const [sfxOn, setSfxOn] = useState(() => localStorage.getItem("bb-sfx") !== "off");
+  const [soundOn, setSoundOn] = useState(true);
+  const fanfareRef = useRef(null);
 
   const selectedWin = win(board, marks, patternsChosen, calls);
-
-  useEffect(() => { localStorage.setItem("bb-sfx", sfxOn ? "on" : "off"); }, [sfxOn]);
-  const previousCallsRef = React.useRef(0);
   useEffect(() => {
-    if(calls.length > previousCallsRef.current && sfxOn) ballSfx();
-    previousCallsRef.current = calls.length;
-  }, [calls.length, sfxOn]);
-  useEffect(() => { if(won && sfxOn) { bingoSfx(); setTimeout(() => { if(sfxOn) applauseSfx(); }, 450); } }, [won]);
+    fanfareRef.current = new Audio("/sounds/fanfare.mp3");
+    fanfareRef.current.volume = 0.85;
+    return () => { if (fanfareRef.current) { fanfareRef.current.pause(); fanfareRef.current = null; } };
+  }, []);
+
+  useEffect(() => {
+    if (won && soundOn && fanfareRef.current) {
+      fanfareRef.current.currentTime = 0;
+      fanfareRef.current.play().catch(() => {});
+    }
+    if (!soundOn && fanfareRef.current) fanfareRef.current.pause();
+  }, [won, soundOn]);
 
 
   // Shared room links prefill the join screen with the room code.
@@ -106,7 +74,6 @@ export default function App() {
     setPage("lobby");
   }
   function startGame() {
-    getAudioContext(); // user gesture unlocks audio for this round
     // Starting/restarting from the lobby always begins a fresh round for everyone.
     // In this frontend prototype, the host's local card is regenerated here.
     let freshBoard = card();
@@ -142,12 +109,12 @@ export default function App() {
   }
   function resetCalls() {
     if (confirm("Reset all called numbers and marked tiles for this round?")) {
-      setCalls([]); setMarks([12]); setWon(false); setRunning(false); setCountdown(0);
+      setCalls([]); setMarks([12]); setWon(false); setRunning(false); setCountdown(0); if (fanfareRef.current) { fanfareRef.current.pause(); fanfareRef.current.currentTime = 0; }
     }
   }
   function endRound() {
     if (confirm("End this round and return to the lobby? A fresh card and caller sequence will be created.")) {
-      setBoard(card()); setCalls([]); setMarks([12]); setWon(false); setRunning(false); setCountdown(0); setPage("lobby");
+      setBoard(card()); setCalls([]); setMarks([12]); setWon(false); setRunning(false); setCountdown(0); if (fanfareRef.current) { fanfareRef.current.pause(); fanfareRef.current.currentTime = 0; } setPage("lobby");
     }
   }
 
@@ -181,10 +148,7 @@ export default function App() {
     <header>
       <div className="brand"><img src="/borderland-bingo-logo.png" alt="Borderland Bingo" /></div>
       <span>COMMUNITY GAME</span>
-      <div className="header-controls">
-      <button className={`audio-toggle ${sfxOn ? "on" : ""}`} title={sfxOn ? "Turn sound off" : "Turn sound on"} onClick={() => { getAudioContext(); setSfxOn(v => !v); }}>🔊 {sfxOn ? "SOUND ON" : "SOUND OFF"}</button>
-      <button className="theme-toggle" onClick={() => setDark((v) => !v)}>{dark ? "☀ LIGHT" : "☾ DARK"}</button>
-    </div>
+      <button className="theme-toggle" onClick={() => setDark((v) => !v)}>{dark ? "☀ LIGHT" : "☾ DARK"}</button><button className="theme-toggle" onClick={() => setSoundOn((v) => !v)}>{soundOn ? "🔊 SOUND ON" : "🔇 SOUND OFF"}</button>
     </header>
 
     {page === "home" && <main className="hero">

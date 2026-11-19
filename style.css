@@ -162,11 +162,3 @@ footer span{color:#a09a8e}
 @keyframes confetti-fall{0%{transform:translate3d(0,-8vh,0) rotate(0deg);opacity:0}10%{opacity:1}100%{transform:translate3d(45px,110vh,0) rotate(720deg);opacity:.85}}
 .winbox{position:relative;z-index:1}
 .link-copy .link-icon{width:16px;height:16px;display:block;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-
-/* V14: optional synthesized background music and sound effects controls */
-.header-controls{display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end}
-.audio-toggle,.theme-toggle{font-size:9px;letter-spacing:1px;padding:8px 10px;margin:2px;background:#fffdf8;color:#6b655b;border:1px solid #d4ccbd;box-shadow:none;border-radius:8px}
-.audio-toggle.on{background:#f2e7d7;color:#9e3037;border-color:#c9a86a}
-.dark-mode .audio-toggle,.dark-mode .theme-toggle{background:#30343a;color:#e7e9ea;border-color:#454a50}
-.dark-mode .audio-toggle.on{background:#4a3c2d;color:#e7c88f;border-color:#b68a4e}
-@media(max-width:650px){header{gap:8px;align-items:flex-start}.header-controls{gap:3px}.audio-toggle,.theme-toggle{padding:7px 8px;font-size:8px}}
