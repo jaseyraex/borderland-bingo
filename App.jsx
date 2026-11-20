@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef } from "react";
-import { card, draw, win } from "./game.js";
+import { card, win } from "./game.js";
+import { createRoomApi, joinRoomApi, connectRoomSocket } from "./multiplayer.js";
 
 const patterns = ["Horizontal", "Vertical", "Diagonal", "Corners", "X", "Blackout"];
 const letters = ["B", "I", "N", "G", "O"];
@@ -50,9 +51,51 @@ export default function App() {
   const [roomCapacity, setRoomCapacity] = useState("");
   const [sharedLink, setSharedLink] = useState(false);
   const [soundOn, setSoundOn] = useState(true);
+  const [playerId, setPlayerId] = useState("");
+  const [playerToken, setPlayerToken] = useState("");
+  const [serverState, setServerState] = useState(null);
+  const [connectionStatus, setConnectionStatus] = useState("disconnected");
+  const socketRef = useRef(null);
+  const lastCallRef = useRef(0);
   const fanfareRef = useRef(null);
 
   const selectedWin = win(board, marks, patternsChosen, calls);
+  const isHost = serverState?.players?.some(p => p.id === playerId && p.role === "HOST") || false;
+
+  function applySnapshot(s) {
+    if (!s) return;
+    setServerState(s);
+    if (s.myCard) setBoard(s.myCard);
+    if (Array.isArray(s.myMarks)) setMarks(s.myMarks);
+    setCalls(s.calls || []);
+    setRoomName(s.roomName || roomName);
+    setCode(s.code || code);
+    setRoomCapacity(String(s.capacity ?? roomCapacity));
+    setPatternsChosen(s.patterns || patternsChosen);
+    setSpeed(s.interval || speed);
+    setParticipants((s.players || []).map(p => ({name:p.name,role:p.role,id:p.id})));
+    setRunning(Boolean(s.started && !s.paused && !s.announcement));
+    setWon(Boolean(s.announcement));
+  }
+
+  function handleServerMessage(message) {
+    if (message.snapshot) applySnapshot(message.snapshot);
+    if (message.type === "STARTED") { setPage("game"); setCountdown(3); }
+    if (message.type === "NEW_ROUND") { setPage("lobby"); setCountdown(0); }
+    if (message.type === "RESET") { setPage("game"); setCountdown(0); }
+    if (message.type === "CLAIM_REJECTED") alert(message.message || "Bingo claim rejected.");
+    if (message.type === "ERROR") alert(message.message || "Connection error.");
+  }
+
+  function attachSocket(roomCode, id, token) {
+    if (socketRef.current) socketRef.current.close();
+    socketRef.current = connectRoomSocket(roomCode, id, token, handleServerMessage, setConnectionStatus);
+  }
+
+  function sendAction(type, payload = {}) {
+    if (socketRef.current?.readyState === WebSocket.OPEN) socketRef.current.send(JSON.stringify({type, ...payload}));
+    else alert("Not connected to the room yet. Please wait and try again.");
+  }
   useEffect(() => {
     fanfareRef.current = new Audio("/sounds/fanfare.mp3");
     fanfareRef.current.volume = 0.85;
@@ -88,59 +131,45 @@ export default function App() {
     if (!name.trim()) return alert("Please enter your player name first.");
     setPage("create");
   }
-  function createRoom() {
+  async function createRoom() {
     if (!roomName.trim()) return alert("Please enter a room name.");
     if (!patternsChosen.length) return alert("Choose at least one winning pattern.");
     const capacity = Number(roomCapacity);
     if (!Number.isInteger(capacity) || capacity < 1 || capacity > 50) return alert("Set room capacity to any whole number from 1 to 50.");
-    setCode(Math.random().toString(36).slice(2, 7).toUpperCase());
-    setRoomStarted(false);
-    setParticipants([{ name, role: "HOST" }]);
-    setPage("lobby");
+    try {
+      const result = await createRoomApi({hostName:name.trim(),roomName:roomName.trim(),capacity,patterns:patternsChosen,interval:speed});
+      const id=result.hostPlayerId || "host";
+      setPlayerId(id); setPlayerToken(result.hostToken); applySnapshot(result); setRoomStarted(false); setPage("lobby"); attachSocket(result.code,id,result.hostToken);
+    } catch (e) { alert(e.message || "Unable to create room. Make sure multiplayer backend is deployed."); }
   }
   function startGame() {
-    // Starting/restarting from the lobby always begins a fresh round for everyone.
-    // In this frontend prototype, the host's local card is regenerated here.
-    let freshBoard = card();
-    let attempts = 0;
-    while (JSON.stringify(freshBoard) === JSON.stringify(board) && attempts < 10) {
-      freshBoard = card();
-      attempts += 1;
-    }
-    setBoard(freshBoard);
-    setCalls([]);
-    setMarks([12]);
-    setWon(false);
-    setRunning(false);
-    setCountdown(3);
-    setRoomStarted(true);
-    setPage("game");
+    if (!isHost) return;
+    sendAction("START");
   }
   function drawOne() {
-    if (soundOn) playBallDrawSound();
-    setCalls((prev) => {
-      const next = draw(prev);
-      return next == null ? prev : [...prev, next];
-    });
+    if (!isHost) return;
+    sendAction("CALL");
   }
   function toggleMark(index) {
     const value = board[Math.floor(index / 5)][index % 5];
     if (value === "FREE" || !calls.includes(value)) return;
-    setMarks((prev) => prev.includes(index) ? prev.filter((x) => x !== index) : [...prev, index]);
+    sendAction("MARK", {index});
   }
   function home() {
     if (confirm("Return to Home? This will leave the current prototype game.")) {
       setRunning(false); setCountdown(0); setPage("home"); setRoomStarted(false);
+      if (socketRef.current) { socketRef.current.close(); socketRef.current = null; }
+      setServerState(null); setPlayerId(""); setPlayerToken("");
     }
   }
   function resetCalls() {
     if (confirm("Reset all called numbers and marked tiles for this round?")) {
-      setCalls([]); setMarks([12]); setWon(false); setRunning(false); setCountdown(0); if (fanfareRef.current) { fanfareRef.current.pause(); fanfareRef.current.currentTime = 0; }
+      sendAction("RESET"); setWon(false); setRunning(false); setCountdown(0); if (fanfareRef.current) { fanfareRef.current.pause(); fanfareRef.current.currentTime = 0; }
     }
   }
   function endRound() {
     if (confirm("End this round and return to the lobby? A fresh card and caller sequence will be created.")) {
-      setBoard(card()); setCalls([]); setMarks([12]); setWon(false); setRunning(false); setCountdown(0); if (fanfareRef.current) { fanfareRef.current.pause(); fanfareRef.current.currentTime = 0; } setPage("lobby");
+      sendAction("NEW_ROUND"); setWon(false); setRunning(false); setCountdown(0); if (fanfareRef.current) { fanfareRef.current.pause(); fanfareRef.current.currentTime = 0; }
     }
   }
 
@@ -150,24 +179,28 @@ export default function App() {
     const timer = setTimeout(() => {
       if (countdown === 1) {
         setCountdown(0);
-        // Release the first ball immediately when the countdown ends.
-        if (soundOn) playBallDrawSound();
-        setCalls((prev) => { const next = draw(prev); return next == null ? prev : [...prev, next]; });
+        // Host releases the first shared ball immediately after countdown.
+        if (isHost) drawOne();
         setRunning(true);
       }
       else setCountdown((v) => v - 1);
     }, 1000);
     return () => clearTimeout(timer);
-  }, [page, countdown, soundOn]);
+  }, [page, countdown, isHost]);
 
   // Automatic calls. Changing the speed while running immediately updates the timer.
   useEffect(() => {
-    if (page !== "game" || !running || won || calls.length >= 75) return;
+    if (page !== "game" || !isHost || !serverState?.started || serverState.paused || serverState.announcement || countdown > 0 || calls.length >= 75) return;
     const timer = setInterval(drawOne, speed * 1000);
     return () => clearInterval(timer);
-  }, [page, running, won, calls.length, speed]);
+  }, [page, isHost, serverState?.started, serverState?.paused, serverState?.announcement, countdown, calls.length, speed]);
 
-  const speedSelect = <select value={speed} onChange={(e) => setSpeed(Number(e.target.value))}>
+  useEffect(() => {
+    if (calls.length > lastCallRef.current && soundOn) playBallDrawSound();
+    lastCallRef.current = calls.length;
+  }, [calls.length, soundOn]);
+
+  const speedSelect = <select value={speed} onChange={(e) => { const next=Number(e.target.value); setSpeed(next); if (serverState && playerId) sendAction("SET_INTERVAL",{interval:next}); }}>
     {speedChoices.map((s) => <option key={s} value={s}>Every {s} seconds</option>)}
   </select>;
 
@@ -198,36 +231,36 @@ export default function App() {
     {page === "join" && <main className="panel">
       <button className="back" onClick={() => { setPage("home"); setSharedLink(false); }}>← BACK</button><small>PLAYER SETUP</small><h2>Join a game</h2>
       {sharedLink ? <><p className="hint">You're joining room <b>{code}</b>. Enter your player name to continue.</p><label>PLAYER NAME</label><input value={name} onChange={(e) => setName(e.target.value)} placeholder="Enter your player name" maxLength={24}/></> : <><p className="hint">Joining as <b>{name}</b></p><label>ROOM CODE</label><input value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} placeholder="Enter room code" maxLength={5}/></>}
-      <button className="primary-wide" onClick={() => { if (!name.trim()) return alert("Please enter your player name."); if (!code.trim()) return alert("Please enter the room code."); alert("This prototype is not connected to multiplayer yet. In the multiplayer version, rooms will be listed and started rooms will reject joins."); }}>JOIN ROOM</button>
+      <button className="primary-wide" onClick={async () => { if (!name.trim()) return alert("Please enter your player name."); if (!code.trim()) return alert("Please enter the room code."); try { const result=await joinRoomApi(code.trim().toUpperCase(),name.trim()); setPlayerId(result.playerId); setPlayerToken(result.playerToken); applySnapshot(result.snapshot); setPage("lobby"); attachSocket(code.trim().toUpperCase(),result.playerId,result.playerToken); } catch(e) { alert(e.message || "Unable to join room."); } }}>JOIN ROOM</button>
       <p className="hint">Players can join only while the host is in the lobby. Once the game starts, joining is closed.</p>
     </main>}
 
     {page === "lobby" && <main className="panel lobby">
-      <button className="back" onClick={() => setPage("home")}>← HOME</button><small>WAITING ROOM</small><h2>{roomName}</h2>
+      <button className="back" onClick={() => {setPage("home"); if(socketRef.current){socketRef.current.close();socketRef.current=null;} setServerState(null);setPlayerId("");setPlayerToken("");}}>← HOME</button><small>WAITING ROOM</small><h2>{roomName}</h2>
       <p className="room-label">ROOM CODE</p><div className="code">{code}<button className="copy" onClick={() => navigator.clipboard?.writeText(code)}>COPY CODE</button><button className="copy link-copy" title="Copy shareable joining link" aria-label="Copy shareable joining link" onClick={copyRoomLink}><svg viewBox="0 0 24 24" aria-hidden="true" className="link-icon"><path d="M10 13a5 5 0 0 0 7.07 0l3-3A5 5 0 0 0 13 8.93"/><path d="M14 11a5 5 0 0 0-7.07 0l-3 3A5 5 0 0 0 11 16.07"/></svg></button></div>
-      <h3>WINNING PATTERNS</h3><div className="patterns">{patterns.map((p) => <button key={p} className={patternsChosen.includes(p) ? "chosen" : ""} onClick={() => setPatternsChosen((old) => old.includes(p) ? old.filter((x) => x !== p) : [...old, p])}>{p}</button>)}</div>
-      <label>CALL INTERVAL</label>{speedSelect}<div className="participant-summary"><strong>PARTICIPANTS: {participants.length}/{roomCapacity}</strong><span>Joining closes when the game starts.</span></div><div className="waiting-grid"><div className="participant-list"><h3>IN THE ROOM</h3>{participants.map((p,i)=><div className="participant" key={i}>♟ {p.name}<small>{p.role}</small></div>)}</div></div><button className="primary-wide" onClick={startGame}>START GAME</button><p className="hint">3-second countdown before the first ball. New players cannot join after the game starts.</p>
+      <h3>WINNING PATTERNS</h3><div className="patterns">{patterns.map((p) => <button key={p} className={patternsChosen.includes(p) ? "chosen" : ""} disabled={!isHost || serverState?.started} onClick={() => { const next=patternsChosen.includes(p)?patternsChosen.filter(x=>x!==p):[...patternsChosen,p]; if(next.length){setPatternsChosen(next);sendAction("SET_PATTERNS",{patterns:next});} }}>{p}</button>)}</div>
+      <label>CALL INTERVAL</label>{speedSelect}<div className="participant-summary"><strong>PARTICIPANTS: {participants.length}/{roomCapacity}</strong><span>Joining closes when the game starts.</span></div><div className="waiting-grid"><div className="participant-list"><h3>IN THE ROOM</h3>{participants.map((p,i)=><div className="participant" key={i}>♟ {p.name}<small>{p.role}</small></div>)}</div></div>{isHost && <button className="primary-wide" onClick={startGame}>START GAME</button>}<p className="hint">Connection: {connectionStatus.toUpperCase()}</p><p className="hint">3-second countdown before the first ball. New players cannot join after the game starts.</p>
     </main>}
 
     {page === "game" && <main className="game">
       <section className="board-area">
-        <div className="gamehead"><div><small>ROOM {code}</small><h2>{roomName}</h2></div><div className="game-actions"><button className="alt small" onClick={() => { setRunning((v) => !v); setCountdown(0); }}>{running ? "PAUSE CALLER" : "RESUME CALLER"}</button><button className="alt small" onClick={home}>⌂ HOME</button></div></div>
+        <div className="gamehead"><div><small>ROOM {code}</small><h2>{roomName}</h2></div><div className="game-actions">{isHost && <button className="alt small" onClick={() => { setCountdown(0); sendAction(serverState?.paused ? "RESUME" : "PAUSE"); }}>{serverState?.paused ? "RESUME CALLER" : "PAUSE CALLER"}</button>}<button className="alt small" onClick={home}>⌂ HOME</button></div></div>
         <div className="letters">{letters.map((l) => <b key={l}>{l}</b>)}</div>
         <div className="board">{board.flat().map((v, i) => <button key={i} className={`${marks.includes(i) ? "marked " : ""}${calls.includes(v) ? "called " : ""}${v === "FREE" ? "free" : ""}`} onClick={() => toggleMark(i)}>{v}</button>)}</div>
-        <button className={`claim ${selectedWin ? "ready" : ""}`} disabled={!selectedWin || won} onClick={() => { setWon(true); setRunning(false); }}>{won ? "CLAIM SUBMITTED" : selectedWin ? "🎉 BINGO — CLAIM YOUR WIN" : "BINGO"}</button>
+        <button className={`claim ${selectedWin ? "ready" : ""}`} disabled={!selectedWin || Boolean(serverState?.winners?.some(w=>w.playerId===playerId)) || Boolean(serverState?.announcement)} onClick={() => sendAction("CLAIM")}>{serverState?.winners?.some(w=>w.playerId===playerId) ? "CLAIM SUBMITTED" : selectedWin ? "🎉 BINGO — CLAIM YOUR WIN" : "BINGO"}</button>
         <p className="hint">Called numbers highlight. Mark them manually; you can mark called numbers later.</p><div className="game-participants"><strong>PARTICIPANTS {participants.length}/{roomCapacity}</strong><div>{participants.map((p,i)=><span key={i}>{p.name}{p.role === "HOST" ? " · HOST" : ""}</span>)}</div></div>
       </section>
       <aside>
         <small>LAST NUMBER CALLED</small><div className="ball">{ballLabel(calls.at(-1))}</div>
         {countdown > 0 && <div className="countdown">STARTING IN<strong>{countdown}</strong></div>}
-        <p className="caller-status">{running && !won && calls.length < 75 ? `AUTO-CALLING EVERY ${speed} SECONDS` : "CALLER PAUSED"}</p>
+        <p className="caller-status">{serverState?.announcement ? "CALLER PAUSED — WINNER ANNOUNCED" : running && calls.length < 75 ? `AUTO-CALLING EVERY ${speed} SECONDS` : "CALLER PAUSED"}</p>
         <label className="speed-label">CALL INTERVAL · CHANGE LIVE</label>{speedSelect}
-        <button className="action-button" onClick={drawOne} disabled={countdown > 0 || calls.length >= 75}>CALL NEXT MANUALLY</button>
-        <button className="alt action-button" onClick={resetCalls}>RESET CALLS</button>
+        {isHost && <button className="action-button" onClick={drawOne} disabled={countdown > 0 || calls.length >= 75 || Boolean(serverState?.announcement)}>CALL NEXT MANUALLY</button>}
+        {isHost && <button className="alt action-button" onClick={resetCalls}>RESET CALLS</button>}
         <h3>CALL HISTORY <small>{calls.length}/75</small></h3><div className="history">{calls.slice().reverse().map((n) => <span key={n}>{letters[Math.floor((n - 1) / 15)]}{n}</span>)}</div>
-        <button className="alt action-button end-button" onClick={endRound}>END ROUND / NEW ROUND</button>
+        {isHost && <button className="alt action-button end-button" onClick={endRound}>END ROUND / NEW ROUND</button>}
       </aside>
-      {won && <div className="overlay"><div className="confetti" aria-hidden="true">{Array.from({length: 70}, (_, i) => <span key={i} style={{left: `${(i * 37) % 100}%`, animationDelay: `${(i % 17) * -0.23}s`, animationDuration: `${3.2 + (i % 9) * 0.35}s`, transform: `rotate(${(i * 53) % 360}deg`}} />)}</div><div className="winbox"><div>🏆</div><small>CONGRATULATIONS!</small><h1>BINGO!</h1><button onClick={() => setPage("lobby")}>BACK TO LOBBY</button></div></div>}
+      {serverState?.announcement && <div className="overlay"><div className="confetti" aria-hidden="true">{Array.from({length: 70}, (_, i) => <span key={i} style={{left: `${(i * 37) % 100}%`, animationDelay: `${(i % 17) * -0.23}s`, animationDuration: `${3.2 + (i % 9) * 0.35}s`, transform: `rotate(${(i * 53) % 360}deg`}} />)}</div><div className="winbox"><div>🏆</div><small>CONGRATULATIONS!</small><h1>BINGO!</h1><p><b>{serverState.announcement.name}</b> won! (Winner #{serverState.announcement.order})</p>{isHost && <button onClick={() => sendAction("CONTINUE")}>CONTINUE GAME</button>}</div></div>}
     </main>}
     <footer>♠ BORDERLAND BINGO <span>FRONTEND PROTOTYPE</span></footer>
   </div>;
