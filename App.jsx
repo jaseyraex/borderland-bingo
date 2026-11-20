@@ -57,7 +57,7 @@ export default function App() {
   const [connectionStatus, setConnectionStatus] = useState("disconnected");
   const [announcementDismissed, setAnnouncementDismissed] = useState(false);
   const [kickTarget, setKickTarget] = useState(null);
-  const [kickedNotice, setKickedNotice] = useState(false);
+  const [kickedNotice, setKickedNotice] = useState(false);\n  const [exitConfirm, setExitConfirm] = useState(false);
   const socketRef = useRef(null);
   const lastCallRef = useRef(0);
   const fanfareRef = useRef(null);
@@ -264,10 +264,23 @@ export default function App() {
     sendAction("MARK", {index});
   }
   function home() {
-    if (confirm("Return to Home? This will leave the current prototype game.")) {
-      setRunning(false); setCountdown(0); setPage("home"); setRoomStarted(false);
+    setExitConfirm(true);
+  }
+  function confirmExitRoom() {
+    setExitConfirm(false);
+    setRunning(false); setCountdown(0); setRoomStarted(false);
+    // Explicitly remove this player from the room. Background/tab disconnects do not remove players.
+    if (socketRef.current?.readyState === WebSocket.OPEN) {
+      socketRef.current.send(JSON.stringify({ type: "EXIT" }));
+      setTimeout(() => {
+        if (socketRef.current) { socketRef.current.close(); socketRef.current = null; }
+        setServerState(null); setPlayerId(""); setPlayerToken(""); localStorage.removeItem("borderlandBingoSession");
+        setPage("home");
+      }, 120);
+    } else {
       if (socketRef.current) { socketRef.current.close(); socketRef.current = null; }
       setServerState(null); setPlayerId(""); setPlayerToken(""); localStorage.removeItem("borderlandBingoSession");
+      setPage("home");
     }
   }
   function resetCalls() {
@@ -374,6 +387,7 @@ export default function App() {
       </aside>
       {serverState?.announcement && !announcementDismissed && <div className="overlay"><div className="confetti" aria-hidden="true">{Array.from({length: 70}, (_, i) => <span key={i} style={{left: `${(i * 37) % 100}%`, animationDelay: `${(i % 17) * -0.23}s`, animationDuration: `${3.2 + (i % 9) * 0.35}s`, transform: `rotate(${(i * 53) % 360}deg`}} />)}</div><div className="winbox"><button className="popup-close" aria-label="Close winner popup" onClick={()=>setAnnouncementDismissed(true)}>×</button><div>🏆</div><small>CONGRATULATIONS!</small><h1>BINGO!</h1><p><b>{serverState.announcement.name}</b> won! (Winner #{serverState.announcement.order})</p><div className="winner-list"><strong>WINNERS IN ORDER</strong>{(serverState.winners||[]).map((w,i)=><div key={w.playerId||i}>{w.name}</div>)}</div>{isHost && <button onClick={() => {setAnnouncementDismissed(false);sendAction("CONTINUE")}}>CONTINUE GAME</button>}</div></div>}
     </main>}
+    {exitConfirm && <div className="overlay exit-confirm-overlay" role="dialog" aria-modal="true"><div className="winbox exit-confirm"><h2>LEAVE GAME?</h2><p>This will exit the game and remove you from the room.</p><div className="kick-confirm-actions"><button className="alt" onClick={()=>setExitConfirm(false)}>CANCEL</button><button onClick={confirmExitRoom}>EXIT GAME</button></div></div></div>}
     {kickTarget && <div className="overlay kick-confirm-overlay" role="dialog" aria-modal="true"><div className="winbox kick-confirm"><button className="popup-close" aria-label="Close" onClick={()=>setKickTarget(null)}>×</button><h2>REMOVE PLAYER?</h2><p>Are you sure you want to remove <b>{kickTarget.name}</b> from this room?</p><p className="hint">They will be notified and returned to the homepage.</p><div className="kick-confirm-actions"><button className="alt" onClick={()=>setKickTarget(null)}>CANCEL</button><button className="danger" onClick={confirmKick}>REMOVE PLAYER</button></div></div></div>}
     {kickedNotice && <div className="overlay removed-overlay" role="dialog" aria-modal="true"><div className="winbox removed-box"><h2>SORRY!</h2><p>You have been removed by the host.</p><button onClick={()=>{setKickedNotice(false);goHome();}}>RETURN TO HOMEPAGE</button></div></div>}
     <footer>♠ BORDERLAND BINGO</footer>

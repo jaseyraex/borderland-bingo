@@ -94,6 +94,12 @@ export class BingoRoom extends DurableObject {
       if(p.role!=="HOST"||!s.started)return;s.paused=false;s.announcement=null;await this.save();this.broadcast("CONTINUE");
     }else if(msg.type==="RESET"){
       if(p.role!=="HOST")return;s.calls=[];s.winners=[];s.announcement=null;s.paused=true;s.players.forEach(pl=>pl.marks=[12]);await this.save();this.broadcast("RESET");
+    }else if(msg.type==="EXIT"){
+      // Only an explicit exit removes a player. Socket disconnects (background tabs/mobile sleep)
+      // intentionally retain room membership so reconnecting players are not left behind.
+      s.players=s.players.filter(x=>x.id!==id);
+      await this.save();
+      this.broadcast("PLAYER_LEFT");
     }else if(msg.type==="KICK"){
       if(p.role!=="HOST"){this.send(ws,"KICK_FAILED",{message:"Only the host can remove players."});return;}
       const targetId=msg.playerId;
