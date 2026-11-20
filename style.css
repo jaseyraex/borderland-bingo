@@ -186,3 +186,14 @@ footer span{color:#a09a8e}
 .kick-confirm-actions button{min-width:120px}
 .kick-confirm-actions .danger{background:#9e3037;color:white;border:1px solid #9e3037}
 .dark-mode .kick-confirm-actions .alt{background:#30343a!important;color:#e7e9ea!important;border-color:#454a50!important}
+/* V8 requested polish */
+.logo-home{background:transparent!important;border:0!important;padding:0!important;margin:0!important;box-shadow:none!important;cursor:pointer}
+.logo-home img{height:38px;max-width:180px;object-fit:contain;display:block}
+.clickable-logo{cursor:pointer}
+.participant{display:flex!important;flex-direction:column;align-items:flex-start;gap:2px;padding:10px 30px 10px 10px!important}
+.participant-name{display:block;line-height:1.3}
+.participant .host-label{float:none!important;display:block;color:#9e3037!important;font-size:9px!important;letter-spacing:2px!important;font-weight:700;margin-left:20px}
+.kick-mini{background:transparent!important;color:#8b8b8b!important;border:0!important;border-radius:0!important;box-shadow:none!important;width:14px!important;height:14px!important;font-size:12px!important;font-weight:500!important;line-height:1!important;padding:0!important;top:3px!important;right:3px!important}
+.kick-mini:hover{color:#b23a40!important;filter:none!important}
+.removed-box h2{color:var(--red,#9e3037)!important;font-size:22px!important;margin:10px 0}
+.removed-box p{line-height:1.6}
