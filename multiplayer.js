@@ -8,7 +8,7 @@ export async function joinRoomApi(code,name){
 }
 export function connectRoomSocket(code,playerId,playerToken,onMessage,onStatus){
   const proto=location.protocol==="https:"?"wss:":"ws:";
-  const ws=new WebSocket(`${proto}//${location.host}/api/rooms/${encodeURIComponent(code)}/socket?playerId=${encodeURIComponent(playerId)}`);
+  const ws=new WebSocket(`${proto}//${location.host}/api/rooms/${encodeURIComponent(code)}/socket?playerId=${encodeURIComponent(playerId)}&token=${encodeURIComponent(playerToken)}`);
   ws.onopen=()=>onStatus?.("connected");ws.onclose=()=>onStatus?.("disconnected");ws.onerror=()=>onStatus?.("error");
   ws.onmessage=e=>{try{onMessage(JSON.parse(e.data))}catch{}};
   return ws;
