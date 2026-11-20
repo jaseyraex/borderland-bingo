@@ -128,7 +128,7 @@ export default function App() {
       setPage("join");
     }
   }, []);
-\n  // Restore an existing room session after refresh, including the host's session.
+// Restore an existing room session after refresh, including the host's session.
   useEffect(() => {
     if (new URLSearchParams(window.location.search).has("room")) return;
     const saved = localStorage.getItem("borderlandBingoSession");
