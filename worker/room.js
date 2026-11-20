@@ -69,10 +69,14 @@ export class BingoRoom extends DurableObject {
       const idx=Number(msg.index);if(!Number.isInteger(idx)||idx<0||idx>24)return;
       const value=p.card[Math.floor(idx/5)][idx%5];if(value==="FREE"||!s.calls.includes(value))return;
       p.marks=p.marks.includes(idx)?p.marks.filter(i=>i!==idx):[...p.marks,idx];await this.save();this.broadcast("MARK_UPDATED");
+    }else if(msg.type==="REFRESH_CARD"){
+      if(s.started)return;
+      p.card=makeCard();p.marks=[12];await this.save();this.send(ws,"CARD_REFRESHED");
     }else if(msg.type==="START"){
       if(p.role!=="HOST"||s.started)return;
       s.started=true;s.paused=false;s.calls=[];s.winners=[];s.announcement=null;s.round++;
-      s.players.forEach(pl=>{pl.card=makeCard();pl.marks=[12]});await this.save();this.broadcast("STARTED");
+      // Keep the waiting-room cards: players' final refreshed cards become their game cards.
+      s.players.forEach(pl=>{pl.marks=[12]});await this.save();this.broadcast("STARTED");
     }else if(msg.type==="CALL"){
       if(p.role!=="HOST"||!s.started||s.announcement||s.calls.length>=75)return;
       const n=draw(s.calls);if(n==null)return;s.calls.push(n);await this.save();this.broadcast("BALL_CALLED",{number:n});

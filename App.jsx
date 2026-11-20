@@ -61,6 +61,9 @@ export default function App() {
   const socketRef = useRef(null);
   const lastCallRef = useRef(0);
   const fanfareRef = useRef(null);
+  const reconnectTimerRef = useRef(null);
+  const reconnectAttemptsRef = useRef(0);
+  const reconnectEnabledRef = useRef(true);
 
   const selectedWin = win(board, marks, patternsChosen, calls);
   const isHost = serverState?.players?.some(p => p.id === playerId && p.role === "HOST") || false;
@@ -95,13 +98,66 @@ export default function App() {
     if (message.type === "ERROR") alert(message.message || "Connection error.");
     if (message.type === "KICK_SUCCESS") { /* host receives room snapshot; no browser prompt */ }
     if (message.type === "KICK_FAILED") { alert(message.message || "Unable to remove player."); }
-    if (message.type === "KICKED") { if(socketRef.current){socketRef.current.close();socketRef.current=null;} localStorage.removeItem("borderlandBingoSession"); setServerState(null); setPlayerId(""); setPlayerToken(""); setPage("home"); setKickedNotice(true); }
+    if (message.type === "KICKED") { reconnectEnabledRef.current = false; if(reconnectTimerRef.current){clearTimeout(reconnectTimerRef.current);reconnectTimerRef.current=null;} if(socketRef.current){socketRef.current.close();socketRef.current=null;} localStorage.removeItem("borderlandBingoSession"); setServerState(null); setPlayerId(""); setPlayerToken(""); setPage("home"); setKickedNotice(true); }
   }
 
   function attachSocket(roomCode, id, token) {
-    if (socketRef.current) socketRef.current.close();
-    socketRef.current = connectRoomSocket(roomCode, id, token, handleServerMessage, setConnectionStatus);
+    reconnectEnabledRef.current = true;
+    if (reconnectTimerRef.current) { clearTimeout(reconnectTimerRef.current); reconnectTimerRef.current = null; }
+    if (socketRef.current) {
+      const previous = socketRef.current;
+      socketRef.current = null;
+      previous.close();
+    }
+    const socket = connectRoomSocket(roomCode, id, token, handleServerMessage, (status) => {
+      setConnectionStatus(status);
+      if (status === "connected") {
+        reconnectAttemptsRef.current = 0;
+        if (reconnectTimerRef.current) { clearTimeout(reconnectTimerRef.current); reconnectTimerRef.current = null; }
+      } else if (status === "disconnected" || status === "error") {
+        // A dropped connection does NOT remove the player from the Durable Object room.
+        // Reconnect automatically and receive the latest room/game snapshot.
+        if (!reconnectEnabledRef.current) return;
+        const saved = localStorage.getItem("borderlandBingoSession");
+        if (!saved) return;
+        let session;
+        try { session = JSON.parse(saved); } catch { return; }
+        if (session.code !== roomCode || session.playerId !== id || session.playerToken !== token) return;
+        if (reconnectTimerRef.current) return;
+        const delay = Math.min(1000 * Math.pow(2, reconnectAttemptsRef.current), 15000);
+        reconnectAttemptsRef.current += 1;
+        reconnectTimerRef.current = setTimeout(() => {
+          reconnectTimerRef.current = null;
+          const latest = localStorage.getItem("borderlandBingoSession");
+          if (!reconnectEnabledRef.current || !latest) return;
+          try {
+            const check = JSON.parse(latest);
+            if (check.code === roomCode && check.playerId === id && check.playerToken === token) attachSocket(roomCode, id, token);
+          } catch {}
+        }, delay);
+      }
+    });
+    socketRef.current = socket;
   }
+
+  useEffect(() => {
+    const reconnectWhenVisible = () => {
+      if (document.visibilityState !== "visible") return;
+      if (socketRef.current?.readyState === WebSocket.OPEN || socketRef.current?.readyState === WebSocket.CONNECTING) return;
+      const saved = localStorage.getItem("borderlandBingoSession");
+      if (!saved) return;
+      try {
+        const session = JSON.parse(saved);
+        if (session?.code && session?.playerId && session?.playerToken) attachSocket(session.code, session.playerId, session.playerToken);
+      } catch {}
+    };
+    window.addEventListener("online", reconnectWhenVisible);
+    document.addEventListener("visibilitychange", reconnectWhenVisible);
+    return () => {
+      window.removeEventListener("online", reconnectWhenVisible);
+      document.removeEventListener("visibilitychange", reconnectWhenVisible);
+    };
+  }, []);
 
   function sendAction(type, payload = {}) {
     if (socketRef.current?.readyState === WebSocket.OPEN) socketRef.current.send(JSON.stringify({type, ...payload}));
@@ -132,7 +188,7 @@ export default function App() {
       setPage("join");
     }
   }, []);
-// Restore an existing room session after refresh, including the host's session.
+  // Restore an existing room session after refresh, including the host's session.
   useEffect(() => {
     if (new URLSearchParams(window.location.search).has("room")) return;
     const saved = localStorage.getItem("borderlandBingoSession");
@@ -175,6 +231,8 @@ export default function App() {
     } catch (e) { alert(e.message || "Unable to create room. Make sure multiplayer backend is deployed."); }
   }
   function goHome() {
+    reconnectEnabledRef.current = false;
+    if (reconnectTimerRef.current) { clearTimeout(reconnectTimerRef.current); reconnectTimerRef.current = null; }
     if (socketRef.current) { socketRef.current.close(); socketRef.current = null; }
     localStorage.removeItem("borderlandBingoSession");
     setServerState(null); setPlayerId(""); setPlayerToken(""); setPage("home");
@@ -287,10 +345,13 @@ export default function App() {
       <p className="hint">Players can join only while the host is in the lobby. Once the game starts, joining is closed.</p>
     </main>}
 
-    {page === "lobby" && <main className="panel lobby">
-      <button className="back" onClick={() => {setPage("home"); if(socketRef.current){socketRef.current.close();socketRef.current=null;} setServerState(null);setPlayerId("");setPlayerToken("");}}>← HOME</button><small>WAITING ROOM</small><div className="lobby-title-row"><h2>{roomName}</h2><div className="lobby-room-code"><span>{code}</span><button className="copy" onClick={() => navigator.clipboard?.writeText(code)}>COPY CODE</button><button className="copy link-copy" title="Copy shareable joining link" aria-label="Copy shareable joining link" onClick={copyRoomLink}><svg viewBox="0 0 24 24" aria-hidden="true" className="link-icon"><path d="M10 13a5 5 0 0 0 7.07 0l3-3A5 5 0 0 0 13 8.93"/><path d="M14 11a5 5 0 0 0-7.07 0l-3 3A5 5 0 0 0 11 16.07"/></svg></button></div></div>
-      <h3>WINNING PATTERNS</h3>{isHost ? <div className="patterns">{patterns.map((p) => <button key={p} className={patternsChosen.includes(p) ? "chosen" : ""} disabled={serverState?.started} onClick={() => { const next=patternsChosen.includes(p)?patternsChosen.filter(x=>x!==p):[...patternsChosen,p]; if(next.length){setPatternsChosen(next);sendAction("SET_PATTERNS",{patterns:next});} }}>{p}</button>)}</div> : <div className="patterns player-patterns">{patternsChosen.map((p)=><span key={p} className="selected-pattern">{p}</span>)}</div>}
-      {isHost && <><label>CALL INTERVAL</label>{speedSelect}</>}<div className="participant-summary"><strong>PARTICIPANTS: {participants.length}/{roomCapacity}</strong><span>Joining closes when the game starts.</span></div><div className="waiting-grid"><div className="participant-list"><h3>IN THE ROOM</h3>{participants.map((p,i)=><div className="participant" key={p.id||i}><span className="participant-name">♟ {p.name}</span>{p.role === "HOST" && <small className="host-label">HOST</small>}{isHost && p.role!=="HOST" && <button className="kick-mini" title={`Remove ${p.name}`} aria-label={`Remove ${p.name}`} onClick={(e)=>{e.stopPropagation();kickPlayer(p.id);}}>×</button>}</div>)}</div></div>{isHost && <button className="primary-wide" onClick={startGame}>START GAME</button>}<p className="hint">Connection: {connectionStatus.toUpperCase()}</p><p className="hint">3-second countdown before the first ball. New players cannot join after the game starts.</p>
+    {page === "lobby" && <main className={`panel lobby ${isHost ? "host-lobby" : "player-lobby"}`}>
+      <button className="back" onClick={() => {reconnectEnabledRef.current=false; if(reconnectTimerRef.current){clearTimeout(reconnectTimerRef.current);reconnectTimerRef.current=null;} setPage("home"); if(socketRef.current){socketRef.current.close();socketRef.current=null;} setServerState(null);setPlayerId("");setPlayerToken("");}}>← HOME</button><small>WAITING ROOM</small>
+      {isHost ? <><h2>{roomName}</h2><p className="room-label">ROOM CODE</p><div className="code">{code}<button className="copy" onClick={() => navigator.clipboard?.writeText(code)}>COPY CODE</button><button className="copy link-copy" title="Copy shareable joining link" aria-label="Copy shareable joining link" onClick={copyRoomLink}><svg viewBox="0 0 24 24" aria-hidden="true" className="link-icon"><path d="M10 13a5 5 0 0 0 7.07 0l3-3A5 5 0 0 0 13 8.93"/><path d="M14 11a5 5 0 0 0-7.07 0l-3 3A5 5 0 0 0 11 16.07"/></svg></button></div></> : <div className="player-room-heading"><h2>{roomName}</h2><span className="player-room-code">{code}<button className="copy" onClick={() => navigator.clipboard?.writeText(code)}>COPY</button><button className="copy link-copy" title="Copy shareable joining link" aria-label="Copy shareable joining link" onClick={copyRoomLink}>↗</button></span></div>}
+      {isHost ? <><h3>WINNING PATTERNS</h3><div className="patterns">{patterns.map((p) => <button key={p} className={patternsChosen.includes(p) ? "chosen" : ""} disabled={serverState?.started} onClick={() => { const next=patternsChosen.includes(p)?patternsChosen.filter(x=>x!==p):[...patternsChosen,p]; if(next.length){setPatternsChosen(next);sendAction("SET_PATTERNS",{patterns:next});} }}>{p}</button>)}</div><label>CALL INTERVAL</label>{speedSelect}</> : <div className="player-selected-patterns"><strong>WINNING PATTERN{patternsChosen.length>1?"S":""}</strong><span>{patternsChosen.join(" · ")}</span></div>}
+      <div className="participant-summary"><strong>PARTICIPANTS: {participants.length}/{roomCapacity}</strong><span>Joining closes when the game starts.</span></div><div className="waiting-grid"><div className="participant-list"><h3>IN THE ROOM</h3>{participants.map((p,i)=><div className="participant" key={p.id||i}><span className="participant-name">♟ {p.name}</span>{p.role === "HOST" && <small className="host-label">HOST</small>}{isHost && p.role!=="HOST" && <button className="kick-mini" title={`Remove ${p.name}`} aria-label={`Remove ${p.name}`} onClick={(e)=>{e.stopPropagation();kickPlayer(p.id);}}>×</button>}</div>)}</div></div>
+      {!isHost && <section className="waiting-card-preview"><h3>YOUR BINGO CARD</h3><div className="preview-letters">{letters.map(l=><b key={l}>{l}</b>)}</div><div className="preview-board">{board.flat().map((v,i)=><div key={i} className={v==="FREE"?"free":""}>{v}</div>)}</div><button className="alt refresh-card" onClick={()=>sendAction("REFRESH_CARD")}>↻ REFRESH CARD</button><p className="hint">You can refresh your card until the host starts the game.</p></section>}
+      {isHost && <button className="primary-wide" onClick={startGame}>START GAME</button>}<p className="hint">Connection: {connectionStatus.toUpperCase()}</p><p className="hint">3-second countdown before the first ball. New players cannot join after the game starts.</p>
     </main>}
 
     {page === "game" && <main className="game">
@@ -314,7 +375,7 @@ export default function App() {
       {serverState?.announcement && !announcementDismissed && <div className="overlay"><div className="confetti" aria-hidden="true">{Array.from({length: 70}, (_, i) => <span key={i} style={{left: `${(i * 37) % 100}%`, animationDelay: `${(i % 17) * -0.23}s`, animationDuration: `${3.2 + (i % 9) * 0.35}s`, transform: `rotate(${(i * 53) % 360}deg`}} />)}</div><div className="winbox"><button className="popup-close" aria-label="Close winner popup" onClick={()=>setAnnouncementDismissed(true)}>×</button><div>🏆</div><small>CONGRATULATIONS!</small><h1>BINGO!</h1><p><b>{serverState.announcement.name}</b> won! (Winner #{serverState.announcement.order})</p><div className="winner-list"><strong>WINNERS IN ORDER</strong>{(serverState.winners||[]).map((w,i)=><div key={w.playerId||i}>{w.name}</div>)}</div>{isHost && <button onClick={() => {setAnnouncementDismissed(false);sendAction("CONTINUE")}}>CONTINUE GAME</button>}</div></div>}
     </main>}
     {kickTarget && <div className="overlay kick-confirm-overlay" role="dialog" aria-modal="true"><div className="winbox kick-confirm"><button className="popup-close" aria-label="Close" onClick={()=>setKickTarget(null)}>×</button><h2>REMOVE PLAYER?</h2><p>Are you sure you want to remove <b>{kickTarget.name}</b> from this room?</p><p className="hint">They will be notified and returned to the homepage.</p><div className="kick-confirm-actions"><button className="alt" onClick={()=>setKickTarget(null)}>CANCEL</button><button className="danger" onClick={confirmKick}>REMOVE PLAYER</button></div></div></div>}
-    {kickedNotice && <div className="overlay removed-overlay" role="dialog" aria-modal="true"><div className="winbox removed-box"><h2>ROOM REMOVAL</h2><p>You have been removed by the host.</p><button onClick={()=>{setKickedNotice(false);goHome();}}>RETURN TO HOMEPAGE</button></div></div>}
+    {kickedNotice && <div className="overlay removed-overlay" role="dialog" aria-modal="true"><div className="winbox removed-box"><h2>SORRY!</h2><p>You have been removed by the host.</p><button onClick={()=>{setKickedNotice(false);goHome();}}>RETURN TO HOMEPAGE</button></div></div>}
     <footer>♠ BORDERLAND BINGO</footer>
   </div>;
 }
