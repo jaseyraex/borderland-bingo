@@ -79,7 +79,11 @@ export default function App() {
   }
 
   function handleServerMessage(message) {
-    if (message.snapshot) applySnapshot(message.snapshot);
+    if (message.snapshot) {
+      applySnapshot(message.snapshot);
+      if (message.snapshot.started) setPage("game");
+      else if (message.snapshot.code) setPage("lobby");
+    }
     if (message.type === "STARTED") { setPage("game"); setCountdown(3); }
     if (message.type === "NEW_ROUND") { setPage("lobby"); setCountdown(0); }
     if (message.type === "RESET") { setPage("game"); setCountdown(0); }
@@ -121,6 +125,25 @@ export default function App() {
       setPage("join");
     }
   }, []);
+\n  // Restore an existing room session after refresh, including the host's session.
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).has("room")) return;
+    const saved = localStorage.getItem("borderlandBingoSession");
+    if (!saved) return;
+    try {
+      const session = JSON.parse(saved);
+      if (!session?.code || !session?.playerId || !session?.playerToken) return;
+      setName(session.name || "");
+      setCode(session.code);
+      setPlayerId(session.playerId);
+      setPlayerToken(session.playerToken);
+      setRoomName(session.roomName || "");
+      setPage("lobby");
+      attachSocket(session.code, session.playerId, session.playerToken);
+    } catch {
+      localStorage.removeItem("borderlandBingoSession");
+    }
+  }, []);
 
   function copyRoomLink() {
     const link = `${window.location.origin}${window.location.pathname}?room=${encodeURIComponent(code)}`;
@@ -139,7 +162,9 @@ export default function App() {
     try {
       const result = await createRoomApi({hostName:name.trim(),roomName:roomName.trim(),capacity,patterns:patternsChosen,interval:speed});
       const id=result.hostPlayerId || "host";
-      setPlayerId(id); setPlayerToken(result.hostToken); applySnapshot(result); setRoomStarted(false); setPage("lobby"); attachSocket(result.code,id,result.hostToken);
+      setPlayerId(id); setPlayerToken(result.hostToken); applySnapshot(result); setRoomStarted(false); setPage("lobby");
+      localStorage.setItem("borderlandBingoSession", JSON.stringify({code:result.code,playerId:id,playerToken:result.hostToken,name:name.trim(),roomName:roomName.trim(),role:"HOST"}));
+      attachSocket(result.code,id,result.hostToken);
     } catch (e) { alert(e.message || "Unable to create room. Make sure multiplayer backend is deployed."); }
   }
   function startGame() {
@@ -159,7 +184,7 @@ export default function App() {
     if (confirm("Return to Home? This will leave the current prototype game.")) {
       setRunning(false); setCountdown(0); setPage("home"); setRoomStarted(false);
       if (socketRef.current) { socketRef.current.close(); socketRef.current = null; }
-      setServerState(null); setPlayerId(""); setPlayerToken("");
+      setServerState(null); setPlayerId(""); setPlayerToken(""); localStorage.removeItem("borderlandBingoSession");
     }
   }
   function resetCalls() {
@@ -231,7 +256,9 @@ export default function App() {
     {page === "join" && <main className="panel">
       <button className="back" onClick={() => { setPage("home"); setSharedLink(false); }}>← BACK</button><small>PLAYER SETUP</small><h2>Join a game</h2>
       {sharedLink ? <><p className="hint">You're joining room <b>{code}</b>. Enter your player name to continue.</p><label>PLAYER NAME</label><input value={name} onChange={(e) => setName(e.target.value)} placeholder="Enter your player name" maxLength={24}/></> : <><p className="hint">Joining as <b>{name}</b></p><label>ROOM CODE</label><input value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} placeholder="Enter room code" maxLength={5}/></>}
-      <button className="primary-wide" onClick={async () => { if (!name.trim()) return alert("Please enter your player name."); if (!code.trim()) return alert("Please enter the room code."); try { const result=await joinRoomApi(code.trim().toUpperCase(),name.trim()); setPlayerId(result.playerId); setPlayerToken(result.playerToken); applySnapshot(result.snapshot); setPage("lobby"); attachSocket(code.trim().toUpperCase(),result.playerId,result.playerToken); } catch(e) { alert(e.message || "Unable to join room."); } }}>JOIN ROOM</button>
+      <button className="primary-wide" onClick={async () => { if (!name.trim()) return alert("Please enter your player name."); if (!code.trim()) return alert("Please enter the room code."); try { const result=await joinRoomApi(code.trim().toUpperCase(),name.trim()); setPlayerId(result.playerId); setPlayerToken(result.playerToken); applySnapshot(result.snapshot); setPage("lobby");
+      localStorage.setItem("borderlandBingoSession", JSON.stringify({code:code.trim().toUpperCase(),playerId:result.playerId,playerToken:result.playerToken,name:name.trim(),roomName:result.snapshot?.roomName || "",role:"PLAYER"}));
+      attachSocket(code.trim().toUpperCase(),result.playerId,result.playerToken); } catch(e) { alert(e.message || "Unable to join room."); } }}>JOIN ROOM</button>
       <p className="hint">Players can join only while the host is in the lobby. Once the game starts, joining is closed.</p>
     </main>}
 
@@ -262,6 +289,6 @@ export default function App() {
       </aside>
       {serverState?.announcement && <div className="overlay"><div className="confetti" aria-hidden="true">{Array.from({length: 70}, (_, i) => <span key={i} style={{left: `${(i * 37) % 100}%`, animationDelay: `${(i % 17) * -0.23}s`, animationDuration: `${3.2 + (i % 9) * 0.35}s`, transform: `rotate(${(i * 53) % 360}deg`}} />)}</div><div className="winbox"><div>🏆</div><small>CONGRATULATIONS!</small><h1>BINGO!</h1><p><b>{serverState.announcement.name}</b> won! (Winner #{serverState.announcement.order})</p>{isHost && <button onClick={() => sendAction("CONTINUE")}>CONTINUE GAME</button>}</div></div>}
     </main>}
-    <footer>♠ BORDERLAND BINGO <span>FRONTEND PROTOTYPE</span></footer>
+    <footer>♠ BORDERLAND BINGO</footer>
   </div>;
 }
