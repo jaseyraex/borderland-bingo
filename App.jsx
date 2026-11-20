@@ -57,7 +57,8 @@ export default function App() {
   const [connectionStatus, setConnectionStatus] = useState("disconnected");
   const [announcementDismissed, setAnnouncementDismissed] = useState(false);
   const [kickTarget, setKickTarget] = useState(null);
-  const [kickedNotice, setKickedNotice] = useState(false);\n  const [exitConfirm, setExitConfirm] = useState(false);
+  const [kickedNotice, setKickedNotice] = useState(false);
+  const [exitConfirm, setExitConfirm] = useState(false);
   const socketRef = useRef(null);
   const lastCallRef = useRef(0);
   const fanfareRef = useRef(null);
