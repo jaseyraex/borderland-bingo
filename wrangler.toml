@@ -1,4 +1,4 @@
-name = "borderland-bingo"
+name = "borderland-bingo-multiplayer"
 main = "worker/index.js"
 compatibility_date = "2026-11-20"
 
