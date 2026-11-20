@@ -162,3 +162,11 @@ footer span{color:#a09a8e}
 @keyframes confetti-fall{0%{transform:translate3d(0,-8vh,0) rotate(0deg);opacity:0}10%{opacity:1}100%{transform:translate3d(45px,110vh,0) rotate(720deg);opacity:.85}}
 .winbox{position:relative;z-index:1}
 .link-copy .link-icon{width:16px;height:16px;display:block;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+
+/* Multiplayer lobby participant list: two columns on wider screens */
+.waiting-grid{width:100%}
+.participant-list{width:100%}
+.participant-list .participant{min-width:0}
+.participant-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.participant-list h3{grid-column:1/-1}
+@media(max-width:520px){.participant-list{grid-template-columns:1fr}}
