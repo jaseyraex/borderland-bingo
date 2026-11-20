@@ -173,5 +173,16 @@ footer span{color:#a09a8e}
 
 .active-patterns{margin:12px 0 18px;padding:12px 14px;border:1px solid #c9a86a55;border-radius:10px;background:#f4e9d8;color:#8f3036;display:flex;flex-direction:column;gap:6px;font-size:12px}.active-patterns strong{font-size:10px;letter-spacing:1.5px}.active-patterns span{font-weight:700;color:#262820}
 .kick-mini{margin:0 0 0 8px;padding:5px 8px;font-size:9px;letter-spacing:.5px;border-radius:6px;background:#9e3037;color:white}
-.winner-list{margin:18px auto;text-align:left;padding:12px;background:#f4e9d8;color:#222;border-radius:8px;max-width:240px}.winner-list strong{display:block;font-size:10px;letter-spacing:1px;margin-bottom:7px;color:#9e3037}.winner-list div{font-size:13px;padding:3px 0}
+.winner-list{margin:18px auto;text-align:center;padding:12px;background:#f4e9d8;color:#222;border-radius:8px;max-width:240px}.winner-list strong{display:block;font-size:10px;letter-spacing:1px;margin-bottom:7px;color:#9e3037;text-align:center}.winner-list div{font-size:13px;padding:3px 0;text-align:center}.dark-mode .winner-list{background:#25292e!important;color:#e7e9ea!important;border:1px solid #3b3f44}.dark-mode .winner-list strong{color:#d2b477}
 .popup-close{position:absolute;right:10px;top:10px;background:transparent;color:inherit;font-size:25px;padding:3px 10px;box-shadow:none}.winbox{position:relative}
+/* V7 host kick controls: corner icon + confirmation dialog */
+.participant{position:relative;padding-right:30px!important}
+.kick-mini{position:absolute!important;top:5px;right:5px;margin:0!important;width:22px;height:22px;padding:0!important;display:flex;align-items:center;justify-content:center;font-size:16px;line-height:1;border-radius:50%;background:#9e3037;color:#fff;box-shadow:none}
+.game-player-chip{position:relative;padding-right:30px!important}
+.game-player-chip .kick-mini{top:50%;transform:translateY(-50%)}
+.kick-confirm{max-width:420px;padding:28px!important}
+.kick-confirm h2{margin:10px 0;color:#9e3037!important}
+.kick-confirm-actions{display:flex;justify-content:center;gap:10px;margin-top:22px;flex-wrap:wrap}
+.kick-confirm-actions button{min-width:120px}
+.kick-confirm-actions .danger{background:#9e3037;color:white;border:1px solid #9e3037}
+.dark-mode .kick-confirm-actions .alt{background:#30343a!important;color:#e7e9ea!important;border-color:#454a50!important}

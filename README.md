@@ -1,22 +1,12 @@
-# Borderland Bingo Multiplayer — Step 1
+# Borderland Bingo Multiplayer V6
 
-This project contains the multiplayer backend and frontend connection work.
+## Kick-player fix
+- Host KICK actions are validated server-side.
+- Removed player sessions are disconnected and removed from room state.
+- Host receives success/failure feedback instead of silent failure.
+- KICK buttons stop click propagation.
 
-## Added
-- Cloudflare Worker API routing
-- Durable Objects room state
-- Unique room creation
-- Capacity enforcement (1–50, host included)
-- Joining before game start only
-- Player-specific cards and marks
-- Token-authenticated WebSocket live state sync
-- Server-authoritative number calls
-- Server-side Bingo claim validation
-- Winner order and winner announcement
-- Host pause/resume/continue/reset/new-round controls
-- Frontend connection helper and integration in `App.jsx`
+## Deploy
+Deploy the frontend and Worker backend from this same package/repository version together. If only the frontend is deployed, the kick action may not be handled by the currently deployed Worker.
 
-## Deployment requirements
-This is designed for Cloudflare Workers with Durable Objects and static assets. The included `wrangler.toml` points static assets at `dist/`. Build the Vite frontend before deploying.
-
-The project build was not verified in this environment because Vite dependencies were not installed (the dependency install timed out). Review/deploy only after local or Cloudflare build succeeds.
+Build verification was not completed in this environment because `npm install` timed out.

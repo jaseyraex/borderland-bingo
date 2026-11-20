@@ -56,6 +56,7 @@ export default function App() {
   const [serverState, setServerState] = useState(null);
   const [connectionStatus, setConnectionStatus] = useState("disconnected");
   const [announcementDismissed, setAnnouncementDismissed] = useState(false);
+  const [kickTarget, setKickTarget] = useState(null);
   const socketRef = useRef(null);
   const lastCallRef = useRef(0);
   const fanfareRef = useRef(null);
@@ -91,7 +92,9 @@ export default function App() {
     if (message.type === "RESET") { setPage("game"); setCountdown(0); }
     if (message.type === "CLAIM_REJECTED") alert(message.message || "Bingo claim rejected.");
     if (message.type === "ERROR") alert(message.message || "Connection error.");
-    if (message.type === "KICKED") { alert("The host removed you from this room."); if(socketRef.current){socketRef.current.close();socketRef.current=null;} localStorage.removeItem("borderlandBingoSession"); setServerState(null); setPlayerId(""); setPlayerToken(""); setPage("home"); }
+    if (message.type === "KICK_SUCCESS") { alert(message.message || "Player removed from room."); }
+    if (message.type === "KICK_FAILED") { alert(message.message || "Unable to remove player."); }
+    if (message.type === "KICKED") { alert("You have been removed from this room by the host."); if(socketRef.current){socketRef.current.close();socketRef.current=null;} localStorage.removeItem("borderlandBingoSession"); setServerState(null); setPlayerId(""); setPlayerToken(""); setPage("home"); }
   }
 
   function attachSocket(roomCode, id, token) {
@@ -173,7 +176,13 @@ export default function App() {
   function kickPlayer(targetId) {
     if (!isHost || targetId === playerId) return;
     const target = participants.find(p => p.id === targetId);
-    if (target && confirm(`Remove ${target.name} from this room?`)) sendAction("KICK", {playerId: targetId});
+    if (target) setKickTarget(target);
+  }
+  function confirmKick() {
+    if (!kickTarget) return;
+    if (!socketRef.current || socketRef.current.readyState !== WebSocket.OPEN) { alert("Host connection is not ready. Please try again."); setKickTarget(null); return; }
+    sendAction("KICK", {playerId: kickTarget.id});
+    setKickTarget(null);
   }
 
   function startGame() {
@@ -275,7 +284,7 @@ export default function App() {
       <button className="back" onClick={() => {setPage("home"); if(socketRef.current){socketRef.current.close();socketRef.current=null;} setServerState(null);setPlayerId("");setPlayerToken("");}}>← HOME</button><small>WAITING ROOM</small><h2>{roomName}</h2>
       <p className="room-label">ROOM CODE</p><div className="code">{code}<button className="copy" onClick={() => navigator.clipboard?.writeText(code)}>COPY CODE</button><button className="copy link-copy" title="Copy shareable joining link" aria-label="Copy shareable joining link" onClick={copyRoomLink}><svg viewBox="0 0 24 24" aria-hidden="true" className="link-icon"><path d="M10 13a5 5 0 0 0 7.07 0l3-3A5 5 0 0 0 13 8.93"/><path d="M14 11a5 5 0 0 0-7.07 0l-3 3A5 5 0 0 0 11 16.07"/></svg></button></div>
       <h3>WINNING PATTERNS</h3><div className="patterns">{patterns.map((p) => <button key={p} className={patternsChosen.includes(p) ? "chosen" : ""} disabled={!isHost || serverState?.started} onClick={() => { const next=patternsChosen.includes(p)?patternsChosen.filter(x=>x!==p):[...patternsChosen,p]; if(next.length){setPatternsChosen(next);sendAction("SET_PATTERNS",{patterns:next});} }}>{p}</button>)}</div>
-      <label>CALL INTERVAL</label>{speedSelect}<div className="participant-summary"><strong>PARTICIPANTS: {participants.length}/{roomCapacity}</strong><span>Joining closes when the game starts.</span></div><div className="waiting-grid"><div className="participant-list"><h3>IN THE ROOM</h3>{participants.map((p,i)=><div className="participant" key={p.id||i}>♟ {p.name}<small>{p.role}</small>{isHost && p.role!=="HOST" && <button className="kick-mini" onClick={()=>kickPlayer(p.id)}>KICK</button>}</div>)}</div></div>{isHost && <button className="primary-wide" onClick={startGame}>START GAME</button>}<p className="hint">Connection: {connectionStatus.toUpperCase()}</p><p className="hint">3-second countdown before the first ball. New players cannot join after the game starts.</p>
+      <label>CALL INTERVAL</label>{speedSelect}<div className="participant-summary"><strong>PARTICIPANTS: {participants.length}/{roomCapacity}</strong><span>Joining closes when the game starts.</span></div><div className="waiting-grid"><div className="participant-list"><h3>IN THE ROOM</h3>{participants.map((p,i)=><div className="participant" key={p.id||i}>♟ {p.name}<small>{p.role}</small>{isHost && p.role!=="HOST" && <button className="kick-mini" title={`Remove ${p.name}`} aria-label={`Remove ${p.name}`} onClick={(e)=>{e.stopPropagation();kickPlayer(p.id);}}>×</button>}</div>)}</div></div>{isHost && <button className="primary-wide" onClick={startGame}>START GAME</button>}<p className="hint">Connection: {connectionStatus.toUpperCase()}</p><p className="hint">3-second countdown before the first ball. New players cannot join after the game starts.</p>
     </main>}
 
     {page === "game" && <main className="game">
@@ -284,7 +293,7 @@ export default function App() {
         <div className="letters">{letters.map((l) => <b key={l}>{l}</b>)}</div>
         <div className="board">{board.flat().map((v, i) => <button key={i} className={`${marks.includes(i) ? "marked " : ""}${calls.includes(v) ? "called " : ""}${v === "FREE" ? "free" : ""}`} onClick={() => toggleMark(i)}>{v}</button>)}</div>
         <button className={`claim ${selectedWin ? "ready" : ""}`} disabled={!selectedWin || Boolean(serverState?.winners?.some(w=>w.playerId===playerId)) || Boolean(serverState?.announcement)} onClick={() => sendAction("CLAIM")}>{serverState?.winners?.some(w=>w.playerId===playerId) ? "CLAIM SUBMITTED" : selectedWin ? "🎉 BINGO — CLAIM YOUR WIN" : "BINGO"}</button>
-        <p className="hint">Called numbers highlight. Mark them manually; you can mark called numbers later.</p><div className="game-participants"><strong>PARTICIPANTS {participants.length}/{roomCapacity}</strong><div>{participants.map((p,i)=><span key={p.id||i}>{p.name}{p.role === "HOST" ? " · HOST" : ""}{isHost && p.role!=="HOST" && <button className="kick-mini" onClick={()=>kickPlayer(p.id)}>KICK</button>}</span>)}</div></div>
+        <p className="hint">Called numbers highlight. Mark them manually; you can mark called numbers later.</p><div className="game-participants"><strong>PARTICIPANTS {participants.length}/{roomCapacity}</strong><div>{participants.map((p,i)=><span className="game-player-chip" key={p.id||i}>{p.name}{p.role === "HOST" ? " · HOST" : ""}{isHost && p.role!=="HOST" && <button className="kick-mini" title={`Remove ${p.name}`} aria-label={`Remove ${p.name}`} onClick={(e)=>{e.stopPropagation();kickPlayer(p.id);}}>×</button>}</span>)}</div></div>
       </section>
       <aside>
         <small>LAST NUMBER CALLED</small><div className="ball">{ballLabel(calls.at(-1))}</div>
@@ -296,8 +305,9 @@ export default function App() {
         <h3>CALL HISTORY <small>{calls.length}/75</small></h3><div className="history">{calls.slice().reverse().map((n) => <span key={n}>{letters[Math.floor((n - 1) / 15)]}{n}</span>)}</div>
         {isHost && <button className="alt action-button end-button" onClick={endRound}>END ROUND / NEW ROUND</button>}
       </aside>
-      {serverState?.announcement && !announcementDismissed && <div className="overlay"><div className="confetti" aria-hidden="true">{Array.from({length: 70}, (_, i) => <span key={i} style={{left: `${(i * 37) % 100}%`, animationDelay: `${(i % 17) * -0.23}s`, animationDuration: `${3.2 + (i % 9) * 0.35}s`, transform: `rotate(${(i * 53) % 360}deg`}} />)}</div><div className="winbox"><button className="popup-close" aria-label="Close winner popup" onClick={()=>setAnnouncementDismissed(true)}>×</button><div>🏆</div><small>CONGRATULATIONS!</small><h1>BINGO!</h1><p><b>{serverState.announcement.name}</b> won! (Winner #{serverState.announcement.order})</p><div className="winner-list"><strong>WINNERS IN ORDER</strong>{(serverState.winners||[]).map((w,i)=><div key={w.playerId||i}>{i+1}. {w.name}</div>)}</div>{isHost && <button onClick={() => {setAnnouncementDismissed(false);sendAction("CONTINUE")}}>CONTINUE GAME</button>}</div></div>}
+      {serverState?.announcement && !announcementDismissed && <div className="overlay"><div className="confetti" aria-hidden="true">{Array.from({length: 70}, (_, i) => <span key={i} style={{left: `${(i * 37) % 100}%`, animationDelay: `${(i % 17) * -0.23}s`, animationDuration: `${3.2 + (i % 9) * 0.35}s`, transform: `rotate(${(i * 53) % 360}deg`}} />)}</div><div className="winbox"><button className="popup-close" aria-label="Close winner popup" onClick={()=>setAnnouncementDismissed(true)}>×</button><div>🏆</div><small>CONGRATULATIONS!</small><h1>BINGO!</h1><p><b>{serverState.announcement.name}</b> won! (Winner #{serverState.announcement.order})</p><div className="winner-list"><strong>WINNERS IN ORDER</strong>{(serverState.winners||[]).map((w,i)=><div key={w.playerId||i}>{w.name}</div>)}</div>{isHost && <button onClick={() => {setAnnouncementDismissed(false);sendAction("CONTINUE")}}>CONTINUE GAME</button>}</div></div>}
     </main>}
+    {kickTarget && <div className="overlay kick-confirm-overlay" role="dialog" aria-modal="true"><div className="winbox kick-confirm"><button className="popup-close" aria-label="Close" onClick={()=>setKickTarget(null)}>×</button><h2>REMOVE PLAYER?</h2><p>Are you sure you want to remove <b>{kickTarget.name}</b> from this room?</p><p className="hint">They will be notified and returned to the homepage.</p><div className="kick-confirm-actions"><button className="alt" onClick={()=>setKickTarget(null)}>CANCEL</button><button className="danger" onClick={confirmKick}>REMOVE PLAYER</button></div></div></div>}
     <footer>♠ BORDERLAND BINGO</footer>
   </div>;
 }
