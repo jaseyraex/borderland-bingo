@@ -90,6 +90,8 @@ export class BingoRoom extends DurableObject {
       if(p.role!=="HOST"||!s.started)return;s.paused=false;s.announcement=null;await this.save();this.broadcast("CONTINUE");
     }else if(msg.type==="RESET"){
       if(p.role!=="HOST")return;s.calls=[];s.winners=[];s.announcement=null;s.paused=true;s.players.forEach(pl=>pl.marks=[12]);await this.save();this.broadcast("RESET");
+    }else if(msg.type==="KICK"){
+      if(p.role!=="HOST")return;const targetId=msg.playerId;if(!targetId||targetId==="host")return;const target=s.players.find(x=>x.id===targetId);if(!target)return;for(const [sock,sid] of this.sockets.entries()){if(sid===targetId){this.send(sock,"KICKED");try{sock.close(1000,"Removed by host");}catch{}this.sockets.delete(sock);}}s.players=s.players.filter(x=>x.id!==targetId);await this.save();this.broadcast("PLAYER_REMOVED");
     }else if(msg.type==="NEW_ROUND"){
       if(p.role!=="HOST")return;s.started=false;s.paused=true;s.calls=[];s.winners=[];s.announcement=null;s.round++;s.players.forEach(pl=>{pl.card=makeCard();pl.marks=[12]});await this.save();this.broadcast("NEW_ROUND");
     }

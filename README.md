@@ -19,4 +19,4 @@ This project contains the multiplayer backend and frontend connection work.
 ## Deployment requirements
 This is designed for Cloudflare Workers with Durable Objects and static assets. The included `wrangler.toml` points static assets at `dist/`. Build the Vite frontend before deploying.
 
-The project build was not verified in this environment because Vite dependencies were not installed (the dependency install timed out). Review/deploy only after local or Cloudflare build succeeds..
+The project build was not verified in this environment because Vite dependencies were not installed (the dependency install timed out). Review/deploy only after local or Cloudflare build succeeds.

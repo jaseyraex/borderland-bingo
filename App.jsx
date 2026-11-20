@@ -55,6 +55,7 @@ export default function App() {
   const [playerToken, setPlayerToken] = useState("");
   const [serverState, setServerState] = useState(null);
   const [connectionStatus, setConnectionStatus] = useState("disconnected");
+  const [announcementDismissed, setAnnouncementDismissed] = useState(false);
   const socketRef = useRef(null);
   const lastCallRef = useRef(0);
   const fanfareRef = useRef(null);
@@ -76,6 +77,7 @@ export default function App() {
     setParticipants((s.players || []).map(p => ({name:p.name,role:p.role,id:p.id})));
     setRunning(Boolean(s.started && !s.paused && !s.announcement));
     setWon(Boolean(s.announcement));
+    if (s.announcement && !announcementDismissed) setAnnouncementDismissed(false);
   }
 
   function handleServerMessage(message) {
@@ -89,6 +91,7 @@ export default function App() {
     if (message.type === "RESET") { setPage("game"); setCountdown(0); }
     if (message.type === "CLAIM_REJECTED") alert(message.message || "Bingo claim rejected.");
     if (message.type === "ERROR") alert(message.message || "Connection error.");
+    if (message.type === "KICKED") { alert("The host removed you from this room."); if(socketRef.current){socketRef.current.close();socketRef.current=null;} localStorage.removeItem("borderlandBingoSession"); setServerState(null); setPlayerId(""); setPlayerToken(""); setPage("home"); }
   }
 
   function attachSocket(roomCode, id, token) {
@@ -125,7 +128,7 @@ export default function App() {
       setPage("join");
     }
   }, []);
-  // Restore an existing room session after refresh, including the host's session.
+\n  // Restore an existing room session after refresh, including the host's session.
   useEffect(() => {
     if (new URLSearchParams(window.location.search).has("room")) return;
     const saved = localStorage.getItem("borderlandBingoSession");
@@ -167,6 +170,12 @@ export default function App() {
       attachSocket(result.code,id,result.hostToken);
     } catch (e) { alert(e.message || "Unable to create room. Make sure multiplayer backend is deployed."); }
   }
+  function kickPlayer(targetId) {
+    if (!isHost || targetId === playerId) return;
+    const target = participants.find(p => p.id === targetId);
+    if (target && confirm(`Remove ${target.name} from this room?`)) sendAction("KICK", {playerId: targetId});
+  }
+
   function startGame() {
     if (!isHost) return;
     sendAction("START");
@@ -266,7 +275,7 @@ export default function App() {
       <button className="back" onClick={() => {setPage("home"); if(socketRef.current){socketRef.current.close();socketRef.current=null;} setServerState(null);setPlayerId("");setPlayerToken("");}}>← HOME</button><small>WAITING ROOM</small><h2>{roomName}</h2>
       <p className="room-label">ROOM CODE</p><div className="code">{code}<button className="copy" onClick={() => navigator.clipboard?.writeText(code)}>COPY CODE</button><button className="copy link-copy" title="Copy shareable joining link" aria-label="Copy shareable joining link" onClick={copyRoomLink}><svg viewBox="0 0 24 24" aria-hidden="true" className="link-icon"><path d="M10 13a5 5 0 0 0 7.07 0l3-3A5 5 0 0 0 13 8.93"/><path d="M14 11a5 5 0 0 0-7.07 0l-3 3A5 5 0 0 0 11 16.07"/></svg></button></div>
       <h3>WINNING PATTERNS</h3><div className="patterns">{patterns.map((p) => <button key={p} className={patternsChosen.includes(p) ? "chosen" : ""} disabled={!isHost || serverState?.started} onClick={() => { const next=patternsChosen.includes(p)?patternsChosen.filter(x=>x!==p):[...patternsChosen,p]; if(next.length){setPatternsChosen(next);sendAction("SET_PATTERNS",{patterns:next});} }}>{p}</button>)}</div>
-      <label>CALL INTERVAL</label>{speedSelect}<div className="participant-summary"><strong>PARTICIPANTS: {participants.length}/{roomCapacity}</strong><span>Joining closes when the game starts.</span></div><div className="waiting-grid"><div className="participant-list"><h3>IN THE ROOM</h3>{participants.map((p,i)=><div className="participant" key={i}>♟ {p.name}<small>{p.role}</small></div>)}</div></div>{isHost && <button className="primary-wide" onClick={startGame}>START GAME</button>}<p className="hint">Connection: {connectionStatus.toUpperCase()}</p><p className="hint">3-second countdown before the first ball. New players cannot join after the game starts.</p>
+      <label>CALL INTERVAL</label>{speedSelect}<div className="participant-summary"><strong>PARTICIPANTS: {participants.length}/{roomCapacity}</strong><span>Joining closes when the game starts.</span></div><div className="waiting-grid"><div className="participant-list"><h3>IN THE ROOM</h3>{participants.map((p,i)=><div className="participant" key={p.id||i}>♟ {p.name}<small>{p.role}</small>{isHost && p.role!=="HOST" && <button className="kick-mini" onClick={()=>kickPlayer(p.id)}>KICK</button>}</div>)}</div></div>{isHost && <button className="primary-wide" onClick={startGame}>START GAME</button>}<p className="hint">Connection: {connectionStatus.toUpperCase()}</p><p className="hint">3-second countdown before the first ball. New players cannot join after the game starts.</p>
     </main>}
 
     {page === "game" && <main className="game">
@@ -275,19 +284,19 @@ export default function App() {
         <div className="letters">{letters.map((l) => <b key={l}>{l}</b>)}</div>
         <div className="board">{board.flat().map((v, i) => <button key={i} className={`${marks.includes(i) ? "marked " : ""}${calls.includes(v) ? "called " : ""}${v === "FREE" ? "free" : ""}`} onClick={() => toggleMark(i)}>{v}</button>)}</div>
         <button className={`claim ${selectedWin ? "ready" : ""}`} disabled={!selectedWin || Boolean(serverState?.winners?.some(w=>w.playerId===playerId)) || Boolean(serverState?.announcement)} onClick={() => sendAction("CLAIM")}>{serverState?.winners?.some(w=>w.playerId===playerId) ? "CLAIM SUBMITTED" : selectedWin ? "🎉 BINGO — CLAIM YOUR WIN" : "BINGO"}</button>
-        <p className="hint">Called numbers highlight. Mark them manually; you can mark called numbers later.</p><div className="game-participants"><strong>PARTICIPANTS {participants.length}/{roomCapacity}</strong><div>{participants.map((p,i)=><span key={i}>{p.name}{p.role === "HOST" ? " · HOST" : ""}</span>)}</div></div>
+        <p className="hint">Called numbers highlight. Mark them manually; you can mark called numbers later.</p><div className="game-participants"><strong>PARTICIPANTS {participants.length}/{roomCapacity}</strong><div>{participants.map((p,i)=><span key={p.id||i}>{p.name}{p.role === "HOST" ? " · HOST" : ""}{isHost && p.role!=="HOST" && <button className="kick-mini" onClick={()=>kickPlayer(p.id)}>KICK</button>}</span>)}</div></div>
       </section>
       <aside>
         <small>LAST NUMBER CALLED</small><div className="ball">{ballLabel(calls.at(-1))}</div>
         {countdown > 0 && <div className="countdown">STARTING IN<strong>{countdown}</strong></div>}
-        <p className="caller-status">{serverState?.announcement ? "CALLER PAUSED — WINNER ANNOUNCED" : running && calls.length < 75 ? `AUTO-CALLING EVERY ${speed} SECONDS` : "CALLER PAUSED"}</p>
+        <p className="caller-status">{serverState?.announcement ? "CALLER PAUSED — WINNER ANNOUNCED" : running && calls.length < 75 ? `AUTO-CALLING EVERY ${speed} SECONDS` : "CALLER PAUSED"}</p><div className="active-patterns"><strong>WINNING PATTERN{patternsChosen.length>1?"S":""}</strong><span>{patternsChosen.join(" · ")}</span></div>
         <label className="speed-label">CALL INTERVAL · CHANGE LIVE</label>{speedSelect}
         {isHost && <button className="action-button" onClick={drawOne} disabled={countdown > 0 || calls.length >= 75 || Boolean(serverState?.announcement)}>CALL NEXT MANUALLY</button>}
         {isHost && <button className="alt action-button" onClick={resetCalls}>RESET CALLS</button>}
         <h3>CALL HISTORY <small>{calls.length}/75</small></h3><div className="history">{calls.slice().reverse().map((n) => <span key={n}>{letters[Math.floor((n - 1) / 15)]}{n}</span>)}</div>
         {isHost && <button className="alt action-button end-button" onClick={endRound}>END ROUND / NEW ROUND</button>}
       </aside>
-      {serverState?.announcement && <div className="overlay"><div className="confetti" aria-hidden="true">{Array.from({length: 70}, (_, i) => <span key={i} style={{left: `${(i * 37) % 100}%`, animationDelay: `${(i % 17) * -0.23}s`, animationDuration: `${3.2 + (i % 9) * 0.35}s`, transform: `rotate(${(i * 53) % 360}deg`}} />)}</div><div className="winbox"><div>🏆</div><small>CONGRATULATIONS!</small><h1>BINGO!</h1><p><b>{serverState.announcement.name}</b> won! (Winner #{serverState.announcement.order})</p>{isHost && <button onClick={() => sendAction("CONTINUE")}>CONTINUE GAME</button>}</div></div>}
+      {serverState?.announcement && !announcementDismissed && <div className="overlay"><div className="confetti" aria-hidden="true">{Array.from({length: 70}, (_, i) => <span key={i} style={{left: `${(i * 37) % 100}%`, animationDelay: `${(i % 17) * -0.23}s`, animationDuration: `${3.2 + (i % 9) * 0.35}s`, transform: `rotate(${(i * 53) % 360}deg`}} />)}</div><div className="winbox"><button className="popup-close" aria-label="Close winner popup" onClick={()=>setAnnouncementDismissed(true)}>×</button><div>🏆</div><small>CONGRATULATIONS!</small><h1>BINGO!</h1><p><b>{serverState.announcement.name}</b> won! (Winner #{serverState.announcement.order})</p><div className="winner-list"><strong>WINNERS IN ORDER</strong>{(serverState.winners||[]).map((w,i)=><div key={w.playerId||i}>{i+1}. {w.name}</div>)}</div>{isHost && <button onClick={() => {setAnnouncementDismissed(false);sendAction("CONTINUE")}}>CONTINUE GAME</button>}</div></div>}
     </main>}
     <footer>♠ BORDERLAND BINGO</footer>
   </div>;
