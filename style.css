@@ -197,3 +197,24 @@ footer span{color:#a09a8e}
 .kick-mini:hover{color:#b23a40!important;filter:none!important}
 .removed-box h2{color:var(--red,#9e3037)!important;font-size:22px!important;margin:10px 0}
 .removed-box p{line-height:1.6}
+
+/* Removal notice: high-contrast custom modal in both themes */
+.removed-overlay{z-index:9999}
+.removed-box{width:min(460px,100%);padding:38px 30px!important;background:#fffdf8!important;color:#252820!important;border:1px solid #c7a566!important}
+.removed-box h2{color:#9e3037!important;font-size:22px!important;letter-spacing:1px;margin:10px 0 18px!important}
+.removed-box p{color:#343a33!important;line-height:1.65;font-size:15px;margin:0 0 28px!important}
+.removed-box button{background:#9e3037!important;color:#fff!important}
+.dark-mode .removed-box{background:#202821!important;color:#e7e9ea!important;border-color:#c7a566!important}
+.dark-mode .removed-box h2{color:#c94b55!important}
+.dark-mode .removed-box p{color:#e7e9ea!important}
+.dark-mode .removed-box button{background:#a8323d!important;color:#fff!important}
+/* Player waiting room refinements */
+.lobby-title-row{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;margin:8px 0 18px}
+.lobby-title-row h2{margin:8px 0;font-family:"Playfair Display",serif;font-size:32px;}
+.lobby-room-code{display:flex;align-items:center;gap:8px;font-family:"Playfair Display",serif;font-size:25px;letter-spacing:3px;color:var(--red);}
+.lobby-room-code .copy{font-family:"DM Sans",sans-serif;font-size:10px;letter-spacing:1px;font-weight:700;}
+.player-patterns{gap:8px;align-items:center}
+.selected-pattern{border:1px solid #c79c65;background:#f5e7d5;color:#8f3036;border-radius:25px;padding:8px 12px;font-size:11px;font-weight:700;letter-spacing:.5px}
+.dark-mode .lobby-room-code{color:#d6b879}
+.dark-mode .selected-pattern{background:#4a3c2d;color:#e7c88f;border-color:#b68a4e}
+@media(max-width:600px){.lobby-title-row{align-items:flex-start;flex-direction:column}.lobby-room-code{font-size:22px}}
